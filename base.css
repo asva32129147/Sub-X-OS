@@ -1,0 +1,148 @@
+/* base.css — CSS variables, reset, typography */
+/* Sub-X OS */
+
+/* ─── Theme tokens (dark default) ─────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --bg:          #1a1a1a;
+  --bg2:         #222;
+  --bg3:         #2a2a2a;
+  --surface:     #242424;
+  --border:      #333;
+  --border2:     #3a3a3a;
+
+  --text:        #e8e8e8;
+  --text2:       #aaa;
+  --text3:       #666;
+
+  --accent:      #00bcd4;
+  --accent2:     #0097a7;
+  --green:       #4caf50;
+  --red:         #f44336;
+  --orange:      #ff9800;
+  --yellow:      #ffeb3b;
+  --purple:      #9c27b0;
+
+  /* Timer-specific */
+  --timer-idle:    #e8e8e8;
+  --timer-holding: #f44336;
+  --timer-ready:   #4caf50;
+  --timer-running: #e8e8e8;
+  --timer-stopped: #00bcd4;
+
+  --font-timer: 'Roboto Mono', 'Courier New', monospace;
+  --font-ui:    system-ui, -apple-system, sans-serif;
+  --font-size-timer: clamp(48px, 12vw, 120px);
+}
+
+[data-theme="light"] {
+  --bg:       #f5f5f5;
+  --bg2:      #ebebeb;
+  --bg3:      #e0e0e0;
+  --surface:  #fff;
+  --border:   #ddd;
+  --border2:  #ccc;
+  --text:     #1a1a1a;
+  --text2:    #555;
+  --text3:    #999;
+}
+
+[data-theme="amoled"] {
+  --bg:       #000;
+  --bg2:      #0a0a0a;
+  --bg3:      #111;
+  --surface:  #0d0d0d;
+  --border:   #222;
+  --border2:  #2a2a2a;
+  --text:     #fff;
+  --text2:    #aaa;
+  --text3:    #555;
+}
+
+[data-theme="green"] {
+  --bg:       #0a0f0a;
+  --bg2:      #0d150d;
+  --bg3:      #111a11;
+  --surface:  #0f1a0f;
+  --border:   #1a3a1a;
+  --border2:  #224422;
+  --text:     #00e676;
+  --text2:    #2e7d32;
+  --text3:    #1b5e20;
+  --accent:   #00e676;
+  --timer-idle:    #00e676;
+  --timer-running: #00e676;
+  --timer-stopped: #69f0ae;
+}
+
+/* ─── Reset ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; font-size: 16px; }
+
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+button:hover {
+  background: var(--bg3);
+  color: var(--text);
+  border-color: var(--accent);
+}
+button.btn-primary {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: 600;
+  padding: 6px 16px;
+  font-size: 13px;
+}
+button.btn-primary:hover { opacity: 0.9; }
+button.btn-sm { font-size: 11px; padding: 3px 8px; }
+
+select, input[type="number"], input[type="text"] {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  outline: none;
+}
+select:focus, input:focus { border-color: var(--accent); }
+
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ─── Utility ────────────────────────────────────────────────────────────── */
+.hidden { display: none !important; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

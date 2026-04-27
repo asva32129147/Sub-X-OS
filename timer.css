@@ -1,0 +1,205 @@
+/* timer.css — timer display, scramble area, inspection overlay */
+
+/* ─── Layout ──────────────────────────────────────────────────────────────── */
+#app {
+  display: grid;
+  grid-template-rows: 40px 1fr;
+  grid-template-columns: 1fr 220px;
+  grid-template-areas:
+    "toolbar toolbar"
+    "main    side";
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
+#toolbar {
+  grid-area: toolbar;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.toolbar-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+#event-selector {
+  font-size: 12px;
+  padding: 2px 6px;
+  max-width: 140px;
+}
+
+#session-selector {
+  font-size: 12px;
+  padding: 2px 6px;
+  max-width: 150px;
+  flex: 1;
+}
+
+.toolbar-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
+/* ─── Main timer area ─────────────────────────────────────────────────────── */
+#main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+#timer-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* ─── Timer display ───────────────────────────────────────────────────────── */
+#timer-display {
+  font-family: var(--font-timer);
+  font-size: var(--font-size-timer);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--timer-idle);
+  transition: color 0.12s;
+  line-height: 1;
+  padding: 0 20px;
+  text-align: center;
+}
+
+/* Color states driven by data-state on #timer-display itself */
+#timer-display[data-state="holding"] { color: var(--timer-holding); }
+#timer-display[data-state="ready"]   { color: var(--timer-ready); }
+#timer-display[data-state="running"] { color: var(--timer-running); }
+#timer-display[data-state="stopped"] { color: var(--timer-stopped); }
+
+/* Hide timer while running if hideTime setting enabled */
+body.hide-time #timer-display[data-state="running"] { opacity: 0; }
+
+/* ─── Inspection overlay ──────────────────────────────────────────────────── */
+#inspection-display {
+  font-family: var(--font-timer);
+  font-size: clamp(32px, 6vw, 60px);
+  color: var(--orange);
+  margin-top: 12px;
+  display: none;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Scramble area ───────────────────────────────────────────────────────── */
+#scramble-wrap {
+  width: 100%;
+  max-width: 700px;
+  padding: 0 24px 16px;
+  text-align: center;
+}
+
+#scramble-display {
+  font-family: var(--font-timer);
+  font-size: clamp(13px, 2.2vw, 18px);
+  color: var(--text);
+  letter-spacing: 0.03em;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+#scramble-display span { display: inline-block; margin: 0 1px; }
+
+#scramble-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* ─── PB flash ───────────────────────────────────────────────────────────── */
+#pb-flash {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--green);
+  color: #000;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 5px 16px;
+  border-radius: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  letter-spacing: 0.08em;
+}
+#pb-flash.visible { opacity: 1; }
+
+/* ─── Timer state hint ───────────────────────────────────────────────────── */
+#timer-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  text-align: center;
+}
+
+/* ─── Stat detail overlay ─────────────────────────────────────────────────── */
+#stat-detail-overlay {
+  display: none;
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  max-width: 420px;
+  width: 90%;
+  z-index: 20;
+}
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.detail-times { color: var(--text2); line-height: 1.8; }
+.detail-times .trimmed { color: var(--text3); text-decoration: line-through; }
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "toolbar"
+      "main";
+  }
+  #side { display: none; }
+  #timer-display { font-size: clamp(48px, 18vw, 96px); }
+}

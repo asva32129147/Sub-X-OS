@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Sub-X OS</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>">
+
+  <!-- CSS — load order matters (base first, then specifics) -->
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="timer.css">
+  <link rel="stylesheet" href="panels.css">
+  <link rel="stylesheet" href="modals.css">
+
+  <!-- Google Fonts (Roboto Mono for timer display) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- Hidden state node — CSS reads data-state to colour the timer display -->
+<div id="timer-state" data-state="idle" style="display:none"></div>
+
+<div id="app">
+
+  <!-- ── Toolbar ─────────────────────────────────────────────────────────── -->
+  <header id="toolbar">
+    <span class="toolbar-title">Sub-X OS</span>
+
+    <select id="event-selector" title="Event"></select>
+
+    <div class="toolbar-sep"></div>
+
+    <select id="session-selector" title="Session"></select>
+    <button id="btn-new-session"    title="New session">+</button>
+    <button id="btn-rename-session" title="Rename session">✎</button>
+    <button id="btn-delete-session" title="Delete session" style="color:var(--red)">🗑</button>
+
+    <div class="toolbar-sep"></div>
+
+    <button id="btn-new-scramble" title="New scramble (n)">↺</button>
+    <button id="btn-toggle-solves" title="Toggle solve list">≡</button>
+    <button id="btn-settings"     title="Settings">⚙</button>
+  </header>
+
+  <!-- ── Main timer area ─────────────────────────────────────────────────── -->
+  <main id="main">
+    <div id="pb-flash">🏆 NEW PB!</div>
+
+    <div id="timer-area">
+      <div id="timer-display">0.00</div>
+      <div id="inspection-display"></div>
+    </div>
+
+    <!-- Scramble -->
+    <div id="scramble-wrap">
+      <div id="scramble-display">Press scramble to generate</div>
+      <div id="scramble-controls">
+        <button id="btn-new-scramble-2" onclick="App.nextScramble()" title="New scramble">New scramble</button>
+      </div>
+    </div>
+
+    <!-- Stat detail popup -->
+    <div id="stat-detail-overlay"></div>
+
+    <!-- Keyboard hint -->
+    <div id="timer-hint">
+      Hold <kbd>Space</kbd> to start &nbsp;·&nbsp; <kbd>Esc</kbd> to cancel
+    </div>
+  </main>
+
+  <!-- ── Side panel ──────────────────────────────────────────────────────── -->
+  <aside id="side">
+    <!-- Live stats -->
+    <div id="stats-panel"></div>
+
+    <!-- Solve list -->
+    <div id="solve-panel">
+      <div class="solve-panel-header">
+        <span>Solves</span>
+        <button class="btn-sm" onclick="Sessions.exportCSTimer()" title="Export">Export</button>
+      </div>
+      <div id="solve-list"></div>
+    </div>
+
+    <!-- Session management -->
+    <div id="session-controls">
+      <button id="btn-new-session-2"    onclick="Sessions.init()">New</button>
+      <button id="btn-rename-session-2" onclick="document.getElementById('btn-rename-session').click()">Rename</button>
+      <button id="btn-delete-session-2" style="color:var(--red)"
+              onclick="document.getElementById('btn-delete-session').click()">Delete</button>
+    </div>
+  </aside>
+
+</div><!-- #app -->
+
+<!-- ── Settings modal ──────────────────────────────────────────────────────── -->
+<div id="settings-overlay" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Settings</h2>
+      <button id="settings-close">✕</button>
+    </div>
+    <div id="settings-content"></div>
+  </div>
+</div>
+
+<!-- ── Import file input (hidden, triggered by Settings panel) ─────────────── -->
+<input type="file" id="import-file-input" accept=".txt,.json" style="display:none"
+  onchange="Sessions.importCSTimer(this.files[0])">
+
+<!-- ── JS — load order is critical ──────────────────────────────────────────
+     utils.js    → no deps, must be first
+     storage.js  → needs utils
+     scramble.js → no deps
+     timer.js    → needs utils, storage
+     sessions.js → needs utils, storage, stats
+     stats.js    → needs utils, storage
+     settings.js → needs storage, scramble, timer
+     app.js      → needs all of the above, must be last
+──────────────────────────────────────────────────────────────────────────── -->
+<script src="utils.js"></script>
+<script src="storage.js"></script>
+<script src="scramble.js"></script>
+<script src="timer.js"></script>
+<script src="sessions.js"></script>
+<script src="stats.js"></script>
+<script src="settings.js"></script>
+<script src="app.js"></script>
+
+<!-- Keyboard shortcuts -->
+<script>
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  // n = new scramble
+  if (e.code === 'KeyN' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    App.nextScramble();
+  }
+});
+</script>
+
+</body>
+</html>
