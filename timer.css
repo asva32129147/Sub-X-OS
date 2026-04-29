@@ -1,176 +1,363 @@
-/* timer.css — timer display, scramble area, inspection overlay */
+/* timer.css — Sub-X OS layout v3
+   Desktop grid: sidebar(180px) | main(1fr) | side(220px)
+   Mobile: flex column with top bar + bottom tabs
+*/
 
-/* ─── Layout ──────────────────────────────────────────────────────────────── */
+/* ═══ CSS custom properties (layout) ════════════════════════════════════════ */
+:root {
+  --sidebar-w:  180px;
+  --side-w:     220px;
+  --mobile-bar: 44px;
+  --tab-bar:    52px;
+  --font-size-timer: clamp(52px, 10vw, 120px);
+}
+
+/* ═══ App shell ═════════════════════════════════════════════════════════════ */
 #app {
   display: grid;
-  grid-template-rows: 40px 1fr;
-  grid-template-columns: 1fr 220px;
-  grid-template-areas:
-    "toolbar toolbar"
-    "main    side";
+  grid-template-columns: var(--sidebar-w) 1fr var(--side-w);
+  grid-template-rows: 100vh;
+  grid-template-areas: "sidebar main side";
   height: 100vh;
   overflow: hidden;
 }
+#mobile-bar  { display: none; }
+#mobile-tabs { display: none; }
 
-/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
-#toolbar {
-  grid-area: toolbar;
+/* ═══ Sidebar ═══════════════════════════════════════════════════════════════ */
+#sidebar {
+  grid-area: sidebar;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
+  flex-direction: column;
   background: var(--bg2);
-  border-bottom: 1px solid var(--border);
-  overflow: hidden;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
-
-.toolbar-title {
-  font-size: 14px;
+.sb-logo {
+  font-size: 13px;
   font-weight: 700;
   color: var(--accent);
-  letter-spacing: 0.05em;
-  margin-right: 4px;
+  letter-spacing: 0.08em;
+  padding: 13px 12px 11px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
   white-space: nowrap;
 }
-
-#event-selector {
-  font-size: 12px;
-  padding: 2px 6px;
-  max-width: 140px;
+.sb-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px 8px;
+  border-bottom: 1px solid var(--border);
 }
-
-#session-selector {
-  font-size: 12px;
-  padding: 2px 6px;
-  max-width: 150px;
+.sb-label {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text3);
+  margin-bottom: 1px;
+}
+.sb-select {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  padding: 3px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+}
+.sb-select:focus { border-color: var(--accent); }
+.sb-row {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.sb-btn {
   flex: 1;
+  min-width: 0;
+  font-size: 9px;
+  padding: 3px 2px;
+  border-radius: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.sb-btn.danger { color: var(--red); border-color: var(--red); }
+.sb-btn.danger:hover { background: var(--red); color: #fff; }
 
-.toolbar-sep {
-  width: 1px;
-  height: 22px;
-  background: var(--border);
-  margin: 0 2px;
+/* Sidebar nav buttons */
+.sb-nav {
+  width: 100%;
+  text-align: left;
+  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  border: none;
+  color: var(--text2);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
 }
+.sb-nav:hover  { background: var(--bg3); color: var(--text); }
+.sb-nav.active { background: rgba(0,188,212,0.1); color: var(--accent); font-weight: 600; }
 
-/* ─── Main timer area ─────────────────────────────────────────────────────── */
-#main {
+/* Sidebar bottom controls — push to bottom */
+.sb-bottom { margin-top: auto; border-bottom: none; }
+.sb-ctrl {
+  width: 100%;
+  text-align: left;
+  font-size: 10px;
+  padding: 5px 8px;
+  border-radius: 3px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s;
+}
+.sb-ctrl:hover    { border-color: var(--accent); color: var(--text); background: var(--bg3); }
+.sb-ctrl.insp-on  { color: var(--green); border-color: var(--green); background: rgba(76,175,80,0.07); }
+
+/* ═══ Mobile top bar ════════════════════════════════════════════════════════ */
+#mobile-bar {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  height: var(--mobile-bar);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.mob-icon-btn {
+  font-size: 16px;
+  padding: 4px 6px;
+  border: none;
+  background: none;
+  color: var(--text2);
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.mb-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  flex: 1;
+  white-space: nowrap;
+}
+.mob-sel {
+  font-size: 10px;
+  padding: 2px 4px;
+  max-width: 100px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.mob-insp {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.mob-insp.insp-on { color: var(--green); border-color: var(--green); }
+
+/* ═══ Mobile drawer ════════════════════════════════════════════════════════= */
+#drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+#drawer-overlay.open {
+  display: block;
+  opacity: 1;
+}
+#mobile-drawer {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: 260px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  z-index: 101;
+  transform: translateX(-100%);
+  transition: transform 0.22s ease;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 20px;
+}
+#mobile-drawer.open { transform: translateX(0); }
+
+/* ═══ Main area ═════════════════════════════════════════════════════════════ */
+#main-area {
   grid-area: main;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
   overflow: hidden;
+  min-width: 0;
+  position: relative;
 }
 
+/* Views */
+.view {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+.view.active { display: flex; }
+
+/* ═══ Scramble — top of main ════════════════════════════════════════════════ */
+#scramble-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 16px 8px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  min-height: 44px;
+}
+#scramble-display {
+  flex: 1;
+  font-family: var(--font-timer);
+  font-size: clamp(11px, 1.7vw, 16px);
+  color: var(--text);
+  line-height: 1.8;
+  word-break: break-word;
+  letter-spacing: 0.04em;
+}
+#scramble-display span { display: inline-block; margin: 0 1px; }
+.scr-btn {
+  flex-shrink: 0;
+  align-self: center;
+  font-size: 18px;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--text3);
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.1s;
+}
+.scr-btn:hover { color: var(--accent); background: none; border: none; }
+
+/* ═══ Timer area ════════════════════════════════════════════════════════════ */
 #timer-area {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1;
-  width: 100%;
   cursor: pointer;
   touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+  min-height: 0;
 }
 
-/* ─── Timer display ───────────────────────────────────────────────────────── */
+/* Timer display number */
 #timer-display {
   font-family: var(--font-timer);
   font-size: var(--font-size-timer);
   font-weight: 300;
   letter-spacing: -0.02em;
   color: var(--timer-idle);
-  transition: color 0.12s;
   line-height: 1;
-  padding: 0 20px;
   text-align: center;
+  padding: 0 16px;
+  /* smooth colour transitions */
+  transition: color 0.08s ease;
 }
 
-/* Color states driven by data-state on #timer-display itself */
-#timer-display[data-state="holding"] { color: var(--timer-holding); }
-#timer-display[data-state="ready"]   { color: var(--timer-ready); }
-#timer-display[data-state="running"] { color: var(--timer-running); }
-#timer-display[data-state="stopped"] { color: var(--timer-stopped); }
+/* Colour states — driven by data-state on #timer-display (set by timer.js) */
+#timer-display[data-state="idle"]        { color: var(--timer-idle); }
+#timer-display[data-state="holding"]     { color: var(--timer-holding); }
+#timer-display[data-state="ready"]       { color: var(--timer-ready); }
+#timer-display[data-state="inspecting"]  { color: var(--orange); }
+#timer-display[data-state="insp-ending"] { color: var(--timer-holding); } /* red flash */
+#timer-display[data-state="running"]     { color: var(--timer-running); }
+#timer-display[data-state="stopped"]     { color: var(--timer-stopped); }
 
-/* Hide timer while running if hideTime setting enabled */
-body.hide-time #timer-display[data-state="running"] { opacity: 0; }
-
-/* ─── Inspection overlay ──────────────────────────────────────────────────── */
+/* Inspection countdown */
 #inspection-display {
-  font-family: var(--font-timer);
-  font-size: clamp(32px, 6vw, 60px);
-  color: var(--orange);
-  margin-top: 12px;
   display: none;
-  letter-spacing: 0.05em;
-}
-
-/* ─── Scramble area ───────────────────────────────────────────────────────── */
-#scramble-wrap {
-  width: 100%;
-  max-width: 700px;
-  padding: 0 24px 16px;
-  text-align: center;
-}
-
-#scramble-display {
   font-family: var(--font-timer);
-  font-size: clamp(13px, 2.2vw, 18px);
-  color: var(--text);
-  letter-spacing: 0.03em;
-  line-height: 1.7;
-  word-break: break-word;
+  font-size: clamp(28px, 5vw, 54px);
+  color: var(--orange);
+  margin-top: 10px;
+  letter-spacing: 0.05em;
+  transition: color 0.1s;
+}
+#inspection-display.ending { color: var(--timer-holding); }
+
+/* Hint bar */
+#timer-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.05em;
+  padding: 6px 12px 10px;
+  flex-shrink: 0;
+}
+#timer-hint kbd {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: var(--font-ui);
+  color: var(--text2);
 }
 
-#scramble-display span { display: inline-block; margin: 0 1px; }
-
-#scramble-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-/* ─── PB flash ───────────────────────────────────────────────────────────── */
+/* PB flash */
 #pb-flash {
   position: absolute;
-  top: 16px;
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--green);
   color: #000;
   font-weight: 700;
-  font-size: 13px;
-  padding: 5px 16px;
+  font-size: 12px;
+  padding: 4px 16px;
   border-radius: 20px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s;
   letter-spacing: 0.08em;
+  z-index: 5;
+  white-space: nowrap;
 }
 #pb-flash.visible { opacity: 1; }
 
-/* ─── Timer state hint ───────────────────────────────────────────────────── */
-#timer-hint {
-  position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
-  color: var(--text3);
-  letter-spacing: 0.06em;
-  pointer-events: none;
-  text-align: center;
-}
-
-/* ─── Stat detail overlay ─────────────────────────────────────────────────── */
+/* Stat detail overlay */
 #stat-detail-overlay {
   display: none;
   position: absolute;
-  bottom: 50px;
+  bottom: 52px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--surface);
@@ -178,9 +365,9 @@ body.hide-time #timer-display[data-state="running"] { opacity: 0; }
   border-radius: 6px;
   padding: 10px 14px;
   font-size: 12px;
-  max-width: 420px;
+  max-width: 400px;
   width: 90%;
-  z-index: 20;
+  z-index: 10;
 }
 .detail-header {
   display: flex;
@@ -192,14 +379,110 @@ body.hide-time #timer-display[data-state="running"] { opacity: 0; }
 .detail-times { color: var(--text2); line-height: 1.8; }
 .detail-times .trimmed { color: var(--text3); text-decoration: line-through; }
 
-/* ─── Responsive ─────────────────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  #app {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "toolbar"
-      "main";
+/* Trainer panel */
+#trainer-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+#trainer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ═══ Responsive — tablet ≤900px ════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  :root {
+    --sidebar-w: 155px;
+    --side-w: 195px;
   }
+}
+
+/* ═══ Responsive — mobile ≤640px ════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Switch from grid to flex column */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    /* Account for safe areas on notched phones */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Hide desktop sidebar on mobile */
+  #sidebar { display: none; }
+
+  /* Show mobile top bar */
+  #mobile-bar { display: flex; }
+
+  /* Main fills remaining space (minus topbar + tabbar) */
+  #main-area {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Bottom tab bar */
+  #mobile-tabs {
+    display: flex;
+    flex-shrink: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    height: var(--tab-bar);
+    /* Keep above safe area */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .mob-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--text3);
+    cursor: pointer;
+    border: none;
+    background: none;
+    gap: 2px;
+    padding: 5px 0;
+    transition: color 0.1s;
+    min-height: 44px; /* WCAG touch target */
+  }
+  .mob-tab:hover,
+  .mob-tab.active { color: var(--accent); }
+  .mob-tab-icon { font-size: 18px; line-height: 1; }
+
+  /* Hide desktop right panel (shown as bottom sheet via .open class) */
   #side { display: none; }
-  #timer-display { font-size: clamp(48px, 18vw, 96px); }
+  #side.open {
+    display: flex;
+    position: fixed;
+    bottom: var(--tab-bar);
+    left: 0; right: 0;
+    height: 55vh;
+    border-top: 1px solid var(--border);
+    border-radius: 12px 12px 0 0;
+    background: var(--bg2);
+    z-index: 20;
+    flex-direction: column;
+  }
+
+  /* Adjust scramble font on small screens */
+  #scramble-display { font-size: 12px; }
+  :root { --font-size-timer: clamp(52px, 18vw, 96px); }
+}
+
+/* ═══ Very small screens ≤380px ════════════════════════════════════════════ */
+@media (max-width: 380px) {
+  :root { --font-size-timer: 16vw; }
+  #scramble-display { font-size: 11px; }
+  #timer-hint { font-size: 9px; }
 }

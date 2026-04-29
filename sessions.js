@@ -215,3 +215,35 @@ const Sessions = (() => {
 
   return { init, refresh, addSolve, exportCSTimer, importCSTimer, renderSolveList };
 })();
+
+// ── Alt+Z: delete last N solves ─────────────────────────────────────────────
+document.addEventListener('keydown', function(e) {
+  if (e.altKey && e.code === 'KeyZ') {
+    e.preventDefault();
+    const sessionId = Storage.getCurrentSessionId();
+    const solves    = Storage.getSolves(sessionId);
+    if (!solves.length) { alert('No solves to delete.'); return; }
+    const raw = prompt(
+      `Delete how many solves?\n(1 = last solve, 2 = last 2, etc.)\nSession has ${solves.length} solves.`,
+      '1'
+    );
+    if (raw === null) return; // cancelled
+    const n = parseInt(raw);
+    if (!n || n < 1 || n > solves.length) {
+      alert(`Enter a number between 1 and ${solves.length}.`);
+      return;
+    }
+    if (!confirm(`Delete the last ${n} solve${n > 1 ? 's' : ''}?`)) return;
+    // Remove last n solves
+    const remaining = solves.slice(0, solves.length - n);
+    // Write back via internal storage key
+    try {
+      localStorage.setItem('subx_solves_' + sessionId, JSON.stringify(remaining));
+    } catch(err) {
+      alert('Storage error: ' + err.message); return;
+    }
+    renderSolveList();
+    if (typeof Stats !== 'undefined') Stats.refresh();
+    if (typeof Sessions !== 'undefined') Sessions.refresh?.();
+  }
+});

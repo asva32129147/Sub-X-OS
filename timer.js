@@ -1,325 +1,359 @@
-// timer.js — core timing engine
-// Handles: spacebar hold, dual-Ctrl stackmat mode, touch, inspection countdown
-// Depends on: utils.js, storage.js
-// Calls into app.js via: App.onSolveComplete(time, penalty)
+// timer.js — timing engine
+// Inspection modes (matches csTimer):
+//   'always'      — always show inspection
+//   'except-bld'  — skip for BLD events (333bf, 444bf, 555bf, 333fm)
+//   'updown'      — Up arrow starts inspection, Down starts timer (csTimer up/down)
+//   'off'         — no inspection
+// Input modes: 'space' (default) | 'stackmat' (both Ctrl keys)
+// Key change from v1: inspection starts with a SINGLE TAP (no hold needed)
+// Red colour (insp-ending state) shown the moment you press to stop inspection
 
 'use strict';
 
 const Timer = (() => {
-  // ─── State machine ────────────────────────────────────────────────────────
-  // States: IDLE → HOLDING → READY → INSPECTING → RUNNING → STOPPED
-  const S = { IDLE:0, HOLDING:1, READY:2, INSPECTING:3, RUNNING:4, STOPPED:5 };
+  const S = {
+    IDLE: 0, HOLDING: 1, READY: 2,
+    INSPECTING: 3, INSP_ENDING: 4,  // INSP_ENDING = pressed space to end, brief red flash
+    RUNNING: 5, STOPPED: 6
+  };
   let state = S.IDLE;
-
-  let startTime   = 0;   // performance.now() when timer started
-  let elapsed     = 0;   // centiseconds, updated each frame
-  let rafId       = null;
-  let holdTimer   = null;
-  let inspTimer   = null;
-  let inspElapsed = 0;   // seconds counted down
-  let inspInterval= null;
-
-  // Stackmat: both Ctrl keys must be held
-  let leftCtrl  = false;
-  let rightCtrl = false;
-
-  // Settings snapshot (refreshed on each start)
+  let startTime = 0, elapsed = 0, rafId = null;
+  let holdTimer = null, inspInterval = null;
+  let inspElapsed = 0, _inspPenalty = '';
+  let leftCtrl = false, rightCtrl = false;
   let cfg = {};
 
-  // DOM refs (set by init)
-  let elDisplay, elInsp, elScramble, elState;
+  // DOM
+  let elDisplay, elInsp;
 
-  // ─── Init ──────────────────────────────────────────────────────────────────
+  // BLD events — skip inspection in 'except-bld' mode
+  const BLD_EVENTS = new Set(['333bf', '444bf', '555bf', '333fm']);
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
   function init() {
-    elDisplay  = document.getElementById('timer-display');
-    elInsp     = document.getElementById('inspection-display');
-    elScramble = document.getElementById('scramble-display');
-    elState    = document.getElementById('timer-state');
+    elDisplay = document.getElementById('timer-display');
+    elInsp    = document.getElementById('inspection-display');
 
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup',   onKeyUp);
 
-    // Touch support
-    const timerArea = document.getElementById('timer-area');
-    if (timerArea) {
-      timerArea.addEventListener('touchstart', onTouchStart, { passive: false });
-      timerArea.addEventListener('touchend',   onTouchEnd,   { passive: false });
+    const area = document.getElementById('timer-area');
+    if (area) {
+      area.addEventListener('touchstart', onTouchStart, { passive: false });
+      area.addEventListener('touchend',   onTouchEnd,   { passive: false });
     }
 
     refreshCfg();
-    setDisplay(0);
     setState('idle');
+    setDisplay(0);
+    syncInspBtn();
   }
 
-  function refreshCfg() {
-    cfg = Storage.getSettings();
+  function refreshCfg() { cfg = Storage.getSettings(); }
+
+  // ─── Inspection toggle (toolbar button) ──────────────────────────────────
+  function toggleInspection() {
+    const s = Storage.getSettings();
+    // Cycle: always → except-bld → updown → off → always
+    const cycle = ['always','except-bld','updown','off'];
+    const idx = cycle.indexOf(s.inspectionMode ?? (s.inspection ? 'always' : 'off'));
+    const next = cycle[(idx + 1) % cycle.length];
+    Storage.setSetting('inspectionMode', next);
+    // Keep legacy bool in sync
+    Storage.setSetting('inspection', next !== 'off');
+    refreshCfg();
+    syncInspBtn();
+    cancelAll();
   }
 
-  // ─── Display helpers ──────────────────────────────────────────────────────
-  function setDisplay(cs, color) {
+  function syncInspBtn() {
+    const s = Storage.getSettings();
+    const mode = s.inspectionMode ?? (s.inspection ? 'always' : 'off');
+    const labels = { 'always':'INSP: ON','except-bld':'INSP: -BLD','updown':'INSP: ↑↓','off':'INSP: OFF' };
+    const on = mode !== 'off';
+    document.querySelectorAll('#btn-inspection-toggle, #insp-toggle-mob').forEach(b => {
+      if (!b) return;
+      b.classList.toggle('insp-on', on);
+      if (b.id === 'btn-inspection-toggle') b.textContent = labels[mode] || 'INSP';
+      if (b.id === 'insp-toggle-mob') b.textContent = on ? 'INSP✓' : 'INSP';
+    });
+    // Update hint
+    updateHint(mode);
+  }
+
+  function updateHint(mode) {
+    const el = document.getElementById('timer-hint');
+    if (!el) return;
+    const m = cfg.timerInput;
+    if (mode === 'updown') {
+      el.innerHTML = '<kbd>↑</kbd> inspection &nbsp;·&nbsp; <kbd>↓</kbd> start timer &nbsp;·&nbsp; <kbd>Esc</kbd> cancel';
+    } else if (m === 'stackmat') {
+      el.innerHTML = 'Hold both <kbd>Ctrl</kbd> keys &nbsp;·&nbsp; <kbd>Esc</kbd> cancel';
+    } else if (mode === 'off') {
+      el.innerHTML = 'Hold <kbd>Space</kbd> to start &nbsp;·&nbsp; <kbd>Space</kbd> to stop &nbsp;·&nbsp; <kbd>Esc</kbd> cancel';
+    } else {
+      el.innerHTML = 'Tap <kbd>Space</kbd> → inspection &nbsp;·&nbsp; Hold <kbd>Space</kbd> → start timing &nbsp;·&nbsp; <kbd>Space</kbd> stop';
+    }
+  }
+
+  function shouldInspect() {
+    const s = Storage.getSettings();
+    const mode = s.inspectionMode ?? (s.inspection ? 'always' : 'off');
+    if (mode === 'off') return false;
+    if (mode === 'always') return true;
+    if (mode === 'except-bld') {
+      const meta = Storage.getCurrentSession();
+      return !BLD_EVENTS.has(meta?.event || '');
+    }
+    // 'updown' handled separately via arrow keys
+    return false;
+  }
+
+  // ─── Display ──────────────────────────────────────────────────────────────
+  function setDisplay(cs) {
     if (!elDisplay) return;
-    elDisplay.textContent = formatTime(cs);
-    if (color) elDisplay.dataset.color = color;
-    else delete elDisplay.dataset.color;
+    elDisplay.textContent = cs === 0 && state === S.IDLE ? '0.00' : formatTime(cs);
   }
 
   function setState(s) {
-    if (!elState) return;
-    elState.dataset.state = s;
-    // Also drive colour directly on the display element for reliability
-    if (!elDisplay) return;
-    elDisplay.dataset.state = s;
+    if (elDisplay) elDisplay.dataset.state = s;
   }
 
-  function setInspDisplay(text) {
+  function setInspDisplay(text, ending) {
     if (!elInsp) return;
-    elInsp.textContent = text || '';
+    elInsp.textContent   = text || '';
     elInsp.style.display = text ? 'block' : 'none';
+    elInsp.classList.toggle('ending', !!ending);
   }
 
-  // ─── Input routing ────────────────────────────────────────────────────────
+  // ─── Key / touch handlers ─────────────────────────────────────────────────
+  function isTyping(t) {
+    return t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable;
+  }
+
   function onKeyDown(e) {
-    // Don't intercept if user is typing in an input
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
+    if (isTyping(e.target)) return;
     refreshCfg();
-    const mode = cfg.timerInput;
+    const s = Storage.getSettings();
+    const mode = s.inspectionMode ?? (s.inspection ? 'always' : 'off');
 
-    if (mode === 'stackmat') {
-      // Both Ctrl keys held = stackmat mode
-      if (e.code === 'ControlLeft')  leftCtrl  = true;
-      if (e.code === 'ControlRight') rightCtrl = true;
-      if (leftCtrl && rightCtrl) handleHoldStart(e);
+    // Up/Down mode (csTimer up/down)
+    if (mode === 'updown') {
+      if (e.code === 'ArrowUp')   { e.preventDefault(); handleUpDown('up'); }
+      if (e.code === 'ArrowDown') { e.preventDefault(); handleUpDown('down'); }
+      if (e.code === 'Escape')    cancelAll();
       return;
     }
 
-    // Space bar mode (csTimer default)
-    if (e.code === 'Space') {
-      e.preventDefault();
-      handleHoldStart(e);
+    if (cfg.timerInput === 'stackmat') {
+      if (e.code === 'ControlLeft')  leftCtrl = true;
+      if (e.code === 'ControlRight') rightCtrl = true;
+      if (leftCtrl && rightCtrl) handlePress();
+      if (e.code === 'Escape') cancelAll();
+      return;
     }
 
-    // Escape cancels everything
+    if (e.code === 'Space') { e.preventDefault(); handlePress(); }
     if (e.code === 'Escape') cancelAll();
   }
 
   function onKeyUp(e) {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
+    if (isTyping(e.target)) return;
     refreshCfg();
-    const mode = cfg.timerInput;
+    const s = Storage.getSettings();
+    const mode = s.inspectionMode ?? (s.inspection ? 'always' : 'off');
+    if (mode === 'updown') return;
 
-    if (mode === 'stackmat') {
-      const wasDown = leftCtrl && rightCtrl;
-      if (e.code === 'ControlLeft')  leftCtrl  = false;
+    if (cfg.timerInput === 'stackmat') {
+      const was = leftCtrl && rightCtrl;
+      if (e.code === 'ControlLeft')  leftCtrl = false;
       if (e.code === 'ControlRight') rightCtrl = false;
-      if (wasDown && (!leftCtrl || !rightCtrl)) handleHoldRelease(e);
+      if (was) handleRelease();
       return;
     }
-
-    if (e.code === 'Space') handleHoldRelease(e);
+    if (e.code === 'Space') handleRelease();
   }
 
   function onTouchStart(e) {
-    if (e.touches.length >= 2) return; // ignore multi-touch on timer area
+    if (e.touches.length >= 2) return;
     e.preventDefault();
     refreshCfg();
-    handleHoldStart(e);
+    handlePress();
   }
-
   function onTouchEnd(e) {
     e.preventDefault();
-    handleHoldRelease(e);
+    handleRelease();
   }
 
-  // ─── State machine transitions ────────────────────────────────────────────
+  // ─── Up/Down mode (csTimer style) ─────────────────────────────────────────
+  function handleUpDown(dir) {
+    if (state === S.RUNNING && dir === 'down') { stopTimer(); return; }
+    if (state === S.RUNNING) return;
+    if (state === S.STOPPED) { state = S.IDLE; setState('idle'); return; }
+    if (dir === 'up' && state === S.IDLE) {
+      if (shouldUDInspect()) startInspection();
+      else { state = S.READY; setState('ready'); setDisplay(0); }
+    }
+    if (dir === 'down' && (state === S.IDLE || state === S.READY || state === S.INSPECTING)) {
+      if (state === S.INSPECTING) { stopInspectionUI(); }
+      startTimer();
+    }
+  }
 
-  function handleHoldStart(e) {
-    if (state === S.RUNNING) {
-      // Pressing any key while running = stop
-      stopTimer();
+  function shouldUDInspect() {
+    const s = Storage.getSettings();
+    const mode = s.inspectionMode ?? 'always';
+    if (mode === 'off') return false;
+    if (mode === 'except-bld') {
+      const meta = Storage.getCurrentSession();
+      return !BLD_EVENTS.has(meta?.event || '');
+    }
+    return true;
+  }
+
+  // ─── Press / Release state machine ────────────────────────────────────────
+  // Flow with inspection ON:
+  //   TAP (quick press+release) → INSPECTING (countdown starts)
+  //   During inspection, HOLD → red (HOLDING) → green (READY) → release → starts timer
+  // Flow with inspection OFF:
+  //   HOLD → red → green → release → starts timer
+  // Running: any press → stop timer
+
+  function handlePress() {
+    if (state === S.RUNNING) { stopTimer(); return; }
+    if (state === S.STOPPED) { state = S.IDLE; setState('idle'); return; }
+
+    // IDLE + inspection on: single tap starts inspection (no hold needed here)
+    if (state === S.IDLE && shouldInspect()) {
+      state = S.INSPECTING;
+      setState('inspecting');
+      startInspection();
       return;
     }
-    if (state === S.STOPPED) {
-      // First press after stop returns to IDLE and resets display
-      state = S.IDLE;
-      return;
-    }
+
+    // IDLE + no inspection: begin hold-to-ready sequence
     if (state === S.IDLE) {
-      state = S.HOLDING;
-      setDisplay(0);
-      setState('holding');
-
-      holdTimer = setTimeout(() => {
-        if (state === S.HOLDING) {
-          state = S.READY;
-          setState('ready');
-          setDisplay(0, 'green');
-        }
-      }, cfg.holdDelay || 550);
-    }
-  }
-
-  function handleHoldRelease(e) {
-    if (state === S.HOLDING) {
-      // Released too early — cancel
-      clearTimeout(holdTimer);
-      holdTimer = null;
-      state = S.IDLE;
-      setState('idle');
-      setDisplay(elapsed || 0);
+      _beginHold();
       return;
     }
 
-    if (state === S.READY) {
-      clearTimeout(holdTimer);
-      holdTimer = null;
-      if (cfg.inspection) {
-        startInspection();
+    // INSPECTING: user presses to start timing — begin hold-to-ready from inspection
+    // inspInterval still running; we check it in handleRelease to know we came from inspection
+    if (state === S.INSPECTING) {
+      _beginHold();
+      return;
+    }
+  }
+
+  function _beginHold() {
+    state = S.HOLDING;
+    setState('holding');   // red
+    setDisplay(0);
+    holdTimer = setTimeout(() => {
+      if (state === S.HOLDING) {
+        state = S.READY;
+        setState('ready'); // green — release now to start
+      }
+    }, cfg.holdDelay || 550);
+  }
+
+  function handleRelease() {
+    if (state === S.HOLDING) {
+      clearTimeout(holdTimer); holdTimer = null;
+      // Released too early — go back to wherever we came from
+      if (inspInterval) {
+        // We were in inspection — return to it
+        state = S.INSPECTING;
+        setState('inspecting');
       } else {
-        startTimer();
+        state = S.IDLE;
+        setState('idle');
+        setDisplay(elapsed || 0);
       }
       return;
     }
 
-    if (state === S.INSPECTING) {
-      // Any release during inspection starts the timer
-      endInspection();
+    if (state === S.READY) {
+      clearTimeout(holdTimer); holdTimer = null;
+      if (inspInterval) {
+        // Coming from inspection — stop countdown, brief red flash, start timer
+        stopInspectionUI();
+        setState('insp-ending');
+      }
       startTimer();
     }
   }
 
   // ─── Inspection ───────────────────────────────────────────────────────────
-
   function startInspection() {
-    state = S.INSPECTING;
-    setState('inspecting');
-    inspElapsed = 0;
+    inspElapsed = 0; _inspPenalty = '';
     const limit = cfg.inspectionTime || 15;
+    setInspDisplay(limit + 's');
 
     inspInterval = setInterval(() => {
       inspElapsed++;
-      const remaining = limit - inspElapsed;
-
+      const rem = limit - inspElapsed;
       if (cfg.inspectionVoice) {
-        if (remaining === 8 || remaining === 3 || remaining === 2 || remaining === 1) {
-          speak(String(remaining));
-        } else if (remaining === 0) {
-          speak('+2');
-        } else if (remaining < 0) {
-          speak('DNF');
-        }
+        if ([8,3,2,1].includes(rem)) speak(String(rem));
+        else if (rem === 0) speak('+2');
+        else if (rem === -1) speak('DNF');
       }
-
-      if (remaining > 0) {
-        setInspDisplay(remaining + 's');
-      } else if (remaining === 0) {
-        setInspDisplay('+2');
-      } else {
-        setInspDisplay('DNF');
-      }
-
-      // Auto-DNF at limit + 2 seconds
-      if (remaining <= -2) {
-        endInspection('DNF');
-        startTimer(true);
-      }
+      if (rem > 0)      setInspDisplay(rem + 's', false);
+      else if (rem > -2) { setInspDisplay('+2', false); _inspPenalty = '+2'; }
+      else              { setInspDisplay('DNF', false); }
+      if (rem <= -2) { stopInspectionUI(); startTimer(true); }
     }, 1000);
   }
 
-  function endInspection(forcePenalty) {
-    clearInterval(inspInterval);
-    inspInterval = null;
-    setInspDisplay('');
-
-    // If inspection went over 15s, mark +2; over 17s, DNF (set in start)
-    if (!forcePenalty) {
-      const limit = cfg.inspectionTime || 15;
-      if (inspElapsed > limit) {
-        Timer._inspPenalty = '+2';
-      } else {
-        Timer._inspPenalty = '';
-      }
-    } else {
-      Timer._inspPenalty = forcePenalty;
-    }
+  function stopInspectionUI() {
+    clearInterval(inspInterval); inspInterval = null;
+    setInspDisplay(null, false);
   }
 
-  // ─── Timer loop ───────────────────────────────────────────────────────────
-
-  function startTimer(skipHoldCheck) {
-    state = S.RUNNING;
-    setState('running');
+  // ─── Timer ────────────────────────────────────────────────────────────────
+  function startTimer() {
+    state = S.RUNNING; setState('running');
+    startTime = performance.now(); elapsed = 0;
     setDisplay(0);
-    startTime = performance.now();
-    elapsed = 0;
     rafId = requestAnimationFrame(tick);
   }
 
   function tick(now) {
     if (state !== S.RUNNING) return;
-    elapsed = Math.floor((now - startTime) / 10); // centiseconds
-    setDisplay(elapsed);
+    elapsed = Math.floor((now - startTime) / 10);
+    if (!cfg.hideTime) setDisplay(elapsed);
     rafId = requestAnimationFrame(tick);
   }
 
   function stopTimer() {
-    if (state !== S.RUNNING) return;
-    cancelAnimationFrame(rafId);
-    rafId = null;
-
-    const finalTime = Math.floor((performance.now() - startTime) / 10);
-    elapsed = finalTime;
-    state = S.STOPPED;
-    setState('stopped');
-
-    setDisplay(finalTime);
-
-    // Resolve inspection penalty
-    const penalty = Timer._inspPenalty || '';
-    Timer._inspPenalty = '';
-
-    // Notify app
-    if (typeof App !== 'undefined' && App.onSolveComplete) {
-      App.onSolveComplete(finalTime, penalty);
-    }
+    cancelAnimationFrame(rafId); rafId = null;
+    const t = Math.floor((performance.now() - startTime) / 10);
+    elapsed = t; state = S.STOPPED; setState('stopped');
+    setDisplay(t);
+    const pen = _inspPenalty; _inspPenalty = '';
+    if (typeof App !== 'undefined') App.onSolveComplete(t, pen);
   }
 
-  // ─── Utility ──────────────────────────────────────────────────────────────
-
+  // ─── Cancel ───────────────────────────────────────────────────────────────
   function cancelAll() {
-    clearTimeout(holdTimer);
-    clearInterval(inspInterval);
+    clearTimeout(holdTimer); stopInspectionUI();
     cancelAnimationFrame(rafId);
-    holdTimer = null;
-    inspInterval = null;
-    rafId = null;
-    state = S.IDLE;
-    setState('idle');
+    holdTimer = null; rafId = null;
+    state = S.IDLE; setState('idle');
     setDisplay(elapsed || 0);
-    setInspDisplay('');
-    leftCtrl = false;
-    rightCtrl = false;
+    leftCtrl = false; rightCtrl = false;
   }
 
-  function speak(text) {
+  // ─── TTS ──────────────────────────────────────────────────────────────────
+  function speak(t) {
     if (!window.speechSynthesis) return;
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.volume = 1;
-    utt.rate   = 1.2;
-    speechSynthesis.speak(utt);
+    const u = new SpeechSynthesisUtterance(t);
+    u.volume = 1; u.rate = 1.3;
+    speechSynthesis.speak(u);
   }
 
-  /** Force the timer input mode without going through settings UI. */
-  function setInputMode(mode) {
-    Storage.setSetting('timerInput', mode);
-    refreshCfg();
-    cancelAll();
-  }
-
-  /** Get current elapsed time in centiseconds (for live display reads). */
   function getElapsed() { return elapsed; }
   function isRunning()  { return state === S.RUNNING; }
 
-  return { init, cancelAll, setInputMode, getElapsed, isRunning, refreshCfg };
+  return { init, cancelAll, refreshCfg, getElapsed, isRunning, toggleInspection, syncInspBtn };
 })();

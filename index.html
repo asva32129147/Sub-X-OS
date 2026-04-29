@@ -2,146 +2,352 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" id="theme-color-meta" content="#1a1a1a">
+  <!-- v3 — cache bust -->
   <title>Sub-X OS</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>">
 
-  <!-- CSS — load order matters (base first, then specifics) -->
-  <link rel="stylesheet" href="base.css">
-  <link rel="stylesheet" href="timer.css">
-  <link rel="stylesheet" href="panels.css">
-  <link rel="stylesheet" href="modals.css">
+  <link rel="stylesheet" href="base.css?v=6">
+  <link rel="stylesheet" href="timer.css?v=6">
+  <link rel="stylesheet" href="panels.css?v=6">
+  <link rel="stylesheet" href="modals.css?v=6">
+  <link rel="stylesheet" href="alg-trainer.css?v=6">
 
-  <!-- Google Fonts (Roboto Mono for timer display) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<!-- Hidden state node — CSS reads data-state to colour the timer display -->
-<div id="timer-state" data-state="idle" style="display:none"></div>
+<!-- Hidden state element — timer.js writes data-state here AND on #timer-display -->
+<div id="timer-state" data-state="idle" aria-hidden="true" style="display:none"></div>
 
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     APP SHELL
+     Grid: [sidebar 180px] [main 1fr] [side 220px]   (desktop)
+     Mobile: flex column — sidebar hidden, mobile-bar shown
+══════════════════════════════════════════════════════════════════════════════ -->
 <div id="app">
 
-  <!-- ── Toolbar ─────────────────────────────────────────────────────────── -->
-  <header id="toolbar">
-    <span class="toolbar-title">Sub-X OS</span>
+  <!-- ── LEFT SIDEBAR (desktop only) ──────────────────────────────────────── -->
+  <nav id="sidebar" aria-label="Navigation">
 
-    <select id="event-selector" title="Event"></select>
+    <div class="sb-logo" aria-label="Sub-X OS">Sub-X OS</div>
 
-    <div class="toolbar-sep"></div>
-
-    <select id="session-selector" title="Session"></select>
-    <button id="btn-new-session"    title="New session">+</button>
-    <button id="btn-rename-session" title="Rename session">✎</button>
-    <button id="btn-delete-session" title="Delete session" style="color:var(--red)">🗑</button>
-
-    <div class="toolbar-sep"></div>
-
-    <button id="btn-new-scramble" title="New scramble (n)">↺</button>
-    <button id="btn-toggle-solves" title="Toggle solve list">≡</button>
-    <button id="btn-settings"     title="Settings">⚙</button>
-  </header>
-
-  <!-- ── Main timer area ─────────────────────────────────────────────────── -->
-  <main id="main">
-    <div id="pb-flash">🏆 NEW PB!</div>
-
-    <div id="timer-area">
-      <div id="timer-display">0.00</div>
-      <div id="inspection-display"></div>
+    <!-- Event -->
+    <div class="sb-section">
+      <div class="sb-label">Event</div>
+      <select id="event-selector" class="sb-select" aria-label="Select event"></select>
     </div>
 
-    <!-- Scramble -->
-    <div id="scramble-wrap">
-      <div id="scramble-display">Press scramble to generate</div>
-      <div id="scramble-controls">
-        <button id="btn-new-scramble-2" onclick="App.nextScramble()" title="New scramble">New scramble</button>
+    <!-- Session -->
+    <div class="sb-section">
+      <div class="sb-label">Session</div>
+      <select id="session-selector" class="sb-select" aria-label="Select session"></select>
+      <div class="sb-row">
+        <button id="btn-new-session"    class="sb-btn" title="New session">+ New</button>
+        <button id="btn-rename-session" class="sb-btn" title="Rename session">✎</button>
+        <button id="btn-delete-session" class="sb-btn danger" title="Delete session">🗑</button>
       </div>
     </div>
 
-    <!-- Stat detail popup -->
-    <div id="stat-detail-overlay"></div>
-
-    <!-- Keyboard hint -->
-    <div id="timer-hint">
-      Hold <kbd>Space</kbd> to start &nbsp;·&nbsp; <kbd>Esc</kbd> to cancel
+    <!-- Navigation -->
+    <div class="sb-section">
+      <div class="sb-label">View</div>
+      <button class="sb-nav active" data-view="timer"   onclick="showView('timer',this)">⏱ Timer</button>
+      <button class="sb-nav"        data-view="trainer" onclick="showView('trainer',this)">🎓 Alg Trainer</button>
     </div>
-  </main>
 
-  <!-- ── Side panel ──────────────────────────────────────────────────────── -->
-  <aside id="side">
-    <!-- Live stats -->
-    <div id="stats-panel"></div>
+    <!-- Controls (push to bottom) -->
+    <div class="sb-section sb-bottom">
+      <button id="btn-inspection-toggle" class="sb-ctrl insp-on"
+              onclick="Timer.toggleInspection()">INSP: ON</button>
+      <button class="sb-ctrl" onclick="App.nextScramble()">↺ New Scramble</button>
+      <button class="sb-ctrl" id="btn-settings" onclick="Settings.open()">⚙ Settings</button>
+    </div>
 
-    <!-- Solve list -->
+  </nav>
+
+  <!-- ── MOBILE TOP BAR (≤640px only) ─────────────────────────────────────── -->
+  <header id="mobile-bar" role="banner">
+    <button id="btn-mobile-menu" class="mob-icon-btn" onclick="openDrawer()"
+            aria-label="Open menu">☰</button>
+    <span class="mb-title">Sub-X OS</span>
+    <select id="event-sel-mob" class="mob-sel" aria-label="Event"
+            onchange="syncEventFromMob(this)"></select>
+    <button id="insp-btn-mob" class="mob-insp insp-on"
+            onclick="Timer.toggleInspection();syncInspBtns()">INSP</button>
+    <button class="mob-icon-btn" onclick="Settings.open()" aria-label="Settings">⚙</button>
+  </header>
+
+  <!-- ── MAIN AREA ─────────────────────────────────────────────────────────── -->
+  <main id="main-area" role="main">
+
+    <!-- ── TIMER VIEW ────────────────────────────────────────────────────── -->
+    <div id="view-timer" class="view active">
+
+      <!-- Scramble at very top -->
+      <div id="scramble-wrap" role="region" aria-label="Scramble">
+        <div id="scramble-display" aria-live="polite">Generating...</div>
+        <button class="scr-btn" onclick="App.nextScramble()"
+                title="New scramble (N)" aria-label="New scramble">↺</button>
+      </div>
+
+      <!-- PB flash badge -->
+      <div id="pb-flash" role="status" aria-live="polite">🏆 NEW PB!</div>
+
+      <!-- Timer centre — this entire area is the tap target -->
+      <div id="timer-area" role="button" aria-label="Timer — tap or hold Space">
+        <div id="timer-display" data-state="idle" aria-live="off">0.00</div>
+        <div id="inspection-display" aria-live="assertive"></div>
+      </div>
+
+      <!-- Hint at bottom of main -->
+      <div id="timer-hint" aria-hidden="true">
+        Hold <kbd>Space</kbd> to start &nbsp;·&nbsp; <kbd>Esc</kbd> cancel
+      </div>
+
+      <!-- Stat detail popup -->
+      <div id="stat-detail-overlay" role="dialog" aria-hidden="true"></div>
+
+    </div><!-- /view-timer -->
+
+    <!-- ── TRAINER VIEW ──────────────────────────────────────────────────── -->
+    <div id="view-trainer" class="view">
+      <div id="trainer-panel">
+        <div id="trainer-content"><!-- Populated by AlgTrainer.init() --></div>
+      </div>
+    </div><!-- /view-trainer -->
+
+  </main><!-- /main-area -->
+
+  <!-- ── RIGHT PANEL (stats + solves) ─────────────────────────────────────── -->
+  <aside id="side" aria-label="Statistics and solve list">
+    <div id="stats-panel" role="region" aria-label="Statistics"></div>
     <div id="solve-panel">
       <div class="solve-panel-header">
         <span>Solves</span>
-        <button class="btn-sm" onclick="Sessions.exportCSTimer()" title="Export">Export</button>
+        <button class="btn-sm" onclick="Sessions.exportCSTimer()">Export</button>
       </div>
-      <div id="solve-list"></div>
+      <div id="solve-list" role="list"></div>
     </div>
-
-    <!-- Session management -->
     <div id="session-controls">
-      <button id="btn-new-session-2"    onclick="Sessions.init()">New</button>
-      <button id="btn-rename-session-2" onclick="document.getElementById('btn-rename-session').click()">Rename</button>
-      <button id="btn-delete-session-2" style="color:var(--red)"
+      <button onclick="document.getElementById('btn-new-session').click()">New</button>
+      <button onclick="document.getElementById('btn-rename-session').click()">Rename</button>
+      <button style="color:var(--red)"
               onclick="document.getElementById('btn-delete-session').click()">Delete</button>
     </div>
   </aside>
 
-</div><!-- #app -->
+</div><!-- /app -->
 
-<!-- ── Settings modal ──────────────────────────────────────────────────────── -->
-<div id="settings-overlay" class="modal-overlay">
+<!-- ── MOBILE DRAWER (slides in from left on mobile) ───────────────────────── -->
+<div id="drawer-overlay" onclick="closeDrawer()" aria-hidden="true"></div>
+<div id="mobile-drawer" role="navigation" aria-label="Mobile navigation">
+  <div class="sb-logo">Sub-X OS</div>
+
+  <div class="sb-section">
+    <div class="sb-label">Event</div>
+    <select id="event-sel-drawer" class="sb-select"
+            onchange="syncEventFromDrawer(this)"></select>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">Session</div>
+    <select id="sess-sel-drawer" class="sb-select"
+            onchange="Storage.setCurrentSession(this.value);App.onSessionSwitch();closeDrawer()"></select>
+    <div class="sb-row">
+      <button onclick="document.getElementById('btn-new-session').click();closeDrawer()"
+              class="sb-btn">+ New</button>
+      <button onclick="document.getElementById('btn-rename-session').click();closeDrawer()"
+              class="sb-btn">✎</button>
+      <button onclick="document.getElementById('btn-delete-session').click();closeDrawer()"
+              class="sb-btn danger">🗑</button>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">View</div>
+    <button class="sb-nav" onclick="showView('timer',null);closeDrawer()">⏱ Timer</button>
+    <button class="sb-nav" onclick="showView('trainer',null);closeDrawer()">🎓 Alg Trainer</button>
+  </div>
+
+  <div class="sb-section">
+    <button class="sb-ctrl" onclick="Timer.toggleInspection();syncInspBtns();closeDrawer()">
+      Toggle Inspection</button>
+    <button class="sb-ctrl" onclick="Settings.open();closeDrawer()">⚙ Settings</button>
+  </div>
+</div>
+
+<!-- ── SETTINGS MODAL ─────────────────────────────────────────────────────── -->
+<div id="settings-overlay" class="modal-overlay" role="dialog" aria-modal="true"
+     aria-label="Settings">
   <div class="modal-box">
     <div class="modal-header">
       <h2>Settings</h2>
-      <button id="settings-close">✕</button>
+      <button id="settings-close" aria-label="Close settings">✕</button>
     </div>
     <div id="settings-content"></div>
   </div>
 </div>
 
-<!-- ── Import file input (hidden, triggered by Settings panel) ─────────────── -->
-<input type="file" id="import-file-input" accept=".txt,.json" style="display:none"
-  onchange="Sessions.importCSTimer(this.files[0])">
+<!-- ── MOBILE BOTTOM TAB BAR ─────────────────────────────────────────────── -->
+<div id="mobile-tabs" role="tablist" aria-label="Navigation tabs">
+  <button class="mob-tab active" role="tab" aria-selected="true"
+          onclick="mobileTab('timer',this)">
+    <span class="mob-tab-icon">⏱</span><span>Timer</span>
+  </button>
+  <button class="mob-tab" role="tab" aria-selected="false"
+          onclick="mobileTab('stats',this)">
+    <span class="mob-tab-icon">📊</span><span>Stats</span>
+  </button>
+  <button class="mob-tab" role="tab" aria-selected="false"
+          onclick="mobileTab('trainer',this)">
+    <span class="mob-tab-icon">🎓</span><span>Trainer</span>
+  </button>
+  <button class="mob-tab" role="tab" aria-selected="false"
+          onclick="Settings.open()">
+    <span class="mob-tab-icon">⚙</span><span>Settings</span>
+  </button>
+</div>
 
-<!-- ── JS — load order is critical ──────────────────────────────────────────
-     utils.js    → no deps, must be first
-     storage.js  → needs utils
-     scramble.js → no deps
-     timer.js    → needs utils, storage
-     sessions.js → needs utils, storage, stats
-     stats.js    → needs utils, storage
-     settings.js → needs storage, scramble, timer
-     app.js      → needs all of the above, must be last
-──────────────────────────────────────────────────────────────────────────── -->
-<script src="utils.js"></script>
-<script src="storage.js"></script>
-<script src="scramble.js"></script>
-<script src="timer.js"></script>
-<script src="sessions.js"></script>
-<script src="stats.js"></script>
-<script src="settings.js"></script>
-<script src="app.js"></script>
+<!-- Hidden file input for csTimer import -->
+<input type="file" id="import-file-input" accept=".txt,.json"
+       aria-hidden="true" style="display:none"
+       onchange="Sessions.importCSTimer(this.files[0])">
 
-<!-- Keyboard shortcuts -->
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     JS — LOAD ORDER IS CRITICAL (dependencies first, app.js last)
+     utils.js    → no deps
+     storage.js  → utils
+     scramble.js → none
+     timer.js    → utils, storage
+     sessions.js → utils, storage
+     stats.js    → utils, storage
+     settings.js → storage, scramble, timer
+     alg-data.js → none
+     alg-trainer.js → utils, storage, alg-data
+     app.js      → everything (loaded last)
+══════════════════════════════════════════════════════════════════════════════ -->
+<script src="utils.js?v=6"></script>
+<script src="storage.js?v=6"></script>
+<script src="scramble.js?v=6"></script>
+<script src="timer.js?v=6"></script>
+<script src="sessions.js?v=6"></script>
+<script src="stats.js?v=6"></script>
+<script src="settings.js?v=6"></script>
+<script src="alg-data.js?v=6"></script>
+<script src="alg-trainer.js?v=6"></script>
+<script src="app.js?v=6"></script>
+
 <script>
-document.addEventListener('keydown', function(e) {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
-  // n = new scramble
-  if (e.code === 'KeyN' && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    App.nextScramble();
+// ── View switching ────────────────────────────────────────────────────────────
+function showView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.sb-nav, .mob-tab[data-view]').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name)?.classList.add('active');
+  // Highlight matching nav buttons
+  document.querySelectorAll('[data-view="' + name + '"]').forEach(b => b.classList.add('active'));
+  if (btn) btn.classList.add('active');
+  if (name === 'trainer') { AlgTrainer.show(); Timer.cancelAll(); }
+  else AlgTrainer.hide();
+}
+
+// ── Mobile drawer ─────────────────────────────────────────────────────────────
+function openDrawer() {
+  document.getElementById('mobile-drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+  // Sync selectors
+  const evD = document.getElementById('event-sel-drawer');
+  const seD = document.getElementById('sess-sel-drawer');
+  const evM = document.getElementById('event-selector');
+  const seM = document.getElementById('session-selector');
+  if (evD && evM) { evD.innerHTML = evM.innerHTML; evD.value = evM.value; }
+  if (seD && seM) { seD.innerHTML = seM.innerHTML; seD.value = seM.value; }
+}
+function closeDrawer() {
+  document.getElementById('mobile-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// ── Mobile event sync ─────────────────────────────────────────────────────────
+function syncEventFromMob(sel) {
+  const main = document.getElementById('event-selector');
+  if (main) { main.value = sel.value; main.dispatchEvent(new Event('change')); }
+}
+function syncEventFromDrawer(sel) {
+  const main = document.getElementById('event-selector');
+  if (main) { main.value = sel.value; main.dispatchEvent(new Event('change')); }
+  const mob = document.getElementById('event-sel-mob');
+  if (mob) mob.value = sel.value;
+}
+
+// ── Inspection button sync ────────────────────────────────────────────────────
+function syncInspBtns() {
+  const s = Storage.getSettings();
+  const mode = s.inspectionMode || (s.inspection ? 'always' : 'off');
+  const on = mode !== 'off';
+  const labels = { always:'INSP: ON', 'except-bld':'INSP: -BLD', updown:'INSP: ↑↓', off:'INSP: OFF' };
+  const mob_labels = { always:'INSP✓', 'except-bld':'-BLD', updown:'↑↓', off:'INSP' };
+  const mainBtn = document.getElementById('btn-inspection-toggle');
+  const mobBtn  = document.getElementById('insp-btn-mob');
+  if (mainBtn) { mainBtn.textContent = labels[mode]||'INSP'; mainBtn.classList.toggle('insp-on', on); }
+  if (mobBtn)  { mobBtn.textContent  = mob_labels[mode]||'INSP'; mobBtn.classList.toggle('insp-on', on); }
+}
+
+// ── Mobile tabs ───────────────────────────────────────────────────────────────
+function mobileTab(name, btn) {
+  document.querySelectorAll('.mob-tab').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected','false');
+  });
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected','true');
+  if (name === 'stats') {
+    // Toggle stats bottom sheet
+    const side = document.getElementById('side');
+    const wasOpen = side.classList.contains('open');
+    side.classList.toggle('open', !wasOpen);
+    showView('timer', null);
+  } else {
+    document.getElementById('side').classList.remove('open');
+    showView(name, null);
+  }
+}
+
+// ── Keep mobile event selector in sync ────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const mainEv = document.getElementById('event-selector');
+  const mobEv  = document.getElementById('event-sel-mob');
+  if (mainEv && mobEv) {
+    mobEv.innerHTML = mainEv.innerHTML;
+    mobEv.value     = mainEv.value;
+    mainEv.addEventListener('change', () => { mobEv.value = mainEv.value; });
   }
 });
-</script>
 
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT'
+      || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+  if (e.code === 'KeyN' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); App.nextScramble(); }
+  if (e.code === 'Escape') { Settings.close(); closeDrawer(); }
+});
+
+// ── Register service worker ───────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  // Unregister any stale service workers first, then register fresh
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  }).finally(() => {
+    navigator.serviceWorker.register('./sw.js')
+      .catch(e => console.warn('SW:', e));
+  });
+}
+</script>
 </body>
 </html>

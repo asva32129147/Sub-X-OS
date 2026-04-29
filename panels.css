@@ -1,6 +1,6 @@
-/* panels.css — side panel: stats + solve list */
+/* panels.css — right side panel: stats + solve list, mobile bottom sheet */
 
-/* ─── Side panel ──────────────────────────────────────────────────────────── */
+/* ─── Right side panel ───────────────────────────────────────────────────── */
 #side {
   grid-area: side;
   display: flex;
@@ -8,54 +8,56 @@
   background: var(--bg2);
   border-left: 1px solid var(--border);
   overflow: hidden;
+  min-width: 0;
 }
 
-/* ─── Stats panel ─────────────────────────────────────────────────────────── */
+/* ─── Stats panel ────────────────────────────────────────────────────────── */
 #stats-panel {
-  padding: 8px 0;
+  padding: 6px 0 4px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
 .stat-row {
   display: grid;
-  grid-template-columns: 52px 1fr auto;
+  grid-template-columns: 48px 1fr auto;
   align-items: center;
   padding: 2px 10px;
   gap: 4px;
-  font-size: 12px;
   border-radius: 2px;
+  cursor: pointer;
   transition: background 0.1s;
 }
-.stat-row:hover { background: var(--bg3); cursor: pointer; }
+.stat-row:hover { background: var(--bg3); }
 .stat-row.is-pb .stat-cur { color: var(--green); }
 
 .stat-label {
-  color: var(--text3);
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 600;
+  letter-spacing: 0.07em;
+  color: var(--text3);
+  font-weight: 700;
 }
 .stat-cur {
   font-family: var(--font-timer);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text);
   text-align: right;
 }
 .stat-best {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text3);
   text-align: right;
-  min-width: 52px;
+  min-width: 48px;
 }
 
-/* ─── Solve panel ─────────────────────────────────────────────────────────── */
+/* ─── Solve panel ────────────────────────────────────────────────────────── */
 #solve-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .solve-panel-header {
@@ -63,31 +65,34 @@
   align-items: center;
   justify-content: space-between;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text3);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 #solve-list {
   flex: 1;
   overflow-y: auto;
   padding: 2px 0;
+  /* Smooth scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
 }
 
 .solve-empty {
   text-align: center;
-  padding: 20px;
-  font-size: 12px;
+  padding: 20px 12px;
+  font-size: 11px;
   color: var(--text3);
+  line-height: 1.6;
 }
 
 /* ─── Solve rows ─────────────────────────────────────────────────────────── */
 .solve-row {
   display: grid;
-  grid-template-columns: 28px 1fr auto;
+  grid-template-columns: 26px 1fr auto;
   grid-template-rows: auto auto;
   grid-template-areas:
     "num time actions"
@@ -95,40 +100,40 @@
   align-items: center;
   gap: 0 4px;
   padding: 3px 6px;
-  font-size: 12px;
   border-bottom: 1px solid var(--border);
   transition: background 0.1s;
 }
-.solve-row:hover { background: var(--bg3); }
-.solve-row.is-pb { background: rgba(76, 175, 80, 0.06); }
+.solve-row:hover         { background: var(--bg3); }
+.solve-row.is-pb         { background: rgba(76,175,80,0.05); }
 
 .solve-num {
   grid-area: num;
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text3);
   text-align: right;
 }
 .solve-time {
   grid-area: time;
   font-family: var(--font-timer);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
-.solve-time.dnf { color: var(--red); }
+.solve-time.dnf         { color: var(--red); }
 .solve-row.is-pb .solve-time { color: var(--green); }
 
 .pb-badge {
-  font-size: 8px;
+  font-size: 7px;
   font-family: var(--font-ui);
   background: var(--green);
   color: #000;
   border-radius: 2px;
   padding: 1px 3px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
 .solve-actions {
@@ -138,18 +143,19 @@
   align-items: center;
 }
 .solve-actions button {
-  font-size: 9px;
-  padding: 1px 4px;
+  font-size: 8px;
+  padding: 1px 3px;
   border-radius: 2px;
 }
-.pen-btn.active { background: var(--orange); border-color: var(--orange); color: #000; }
-.del-btn { color: var(--text3); border-color: transparent; }
-.del-btn:hover { color: var(--red); border-color: var(--red); background: transparent; }
+.pen-btn.active         { background: var(--orange); border-color: var(--orange); color: #000; }
+.del-btn                { color: var(--text3); border-color: transparent; }
+.del-btn:hover          { color: var(--red); border-color: var(--red); background: transparent; }
+.solve-scramble-toggle  { color: var(--text3); border-color: transparent; font-size: 10px; }
 
 .solve-scramble-text {
   grid-area: scr;
   display: none;
-  font-size: 9px;
+  font-size: 8px;
   color: var(--text3);
   font-family: var(--font-timer);
   padding: 2px 0 3px;
@@ -158,12 +164,68 @@
 }
 .solve-row.show-scramble .solve-scramble-text { display: block; }
 
-/* ─── Session controls below solve list ─────────────────────────────────── */
+/* ─── Session controls ───────────────────────────────────────────────────── */
 #session-controls {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   padding: 5px 6px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
-#session-controls button { flex: 1; font-size: 10px; padding: 3px 4px; }
+#session-controls button {
+  flex: 1;
+  font-size: 9px;
+  padding: 3px 4px;
+}
+
+/* ─── Mobile: right panel becomes bottom sheet ───────────────────────────── */
+@media (max-width: 640px) {
+  #side {
+    display: none; /* hidden by default */
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 55vh;
+    border-top: 1px solid var(--border);
+    border-left: none;
+    border-radius: 12px 12px 0 0;
+    z-index: 30;
+    background: var(--bg2);
+  }
+  #side.open { display: flex; }
+
+  /* Bottom tab bar for mobile */
+  #mobile-tabs {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    z-index: 25;
+    height: 52px;
+  }
+  .mob-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--text3);
+    cursor: pointer;
+    border: none;
+    background: none;
+    gap: 2px;
+    padding: 6px 0;
+    transition: color 0.1s;
+  }
+  .mob-tab:hover, .mob-tab.active { color: var(--accent); }
+  .mob-tab-icon { font-size: 18px; line-height: 1; }
+
+  /* Push content above tab bar on mobile */
+  #main-area { padding-bottom: 52px; }
+}
+
+/* Desktop: hide mobile tabs */
+@media (min-width: 641px) {
+  #mobile-tabs { display: none; }
+}
