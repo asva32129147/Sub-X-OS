@@ -154,10 +154,11 @@ const Sessions = (() => {
 
     const pbBadge = isPb ? '<span class="pb-badge">PB</span>' : '';
 
+    const sessionId2 = Storage.getCurrentSessionId();
     return `
     <div class="solve-row${isPb ? ' is-pb' : ''}" data-id="${solve.id}">
-      <div class="solve-num">${n}</div>
-      <div class="solve-time ${effectiveCs === -1 ? 'dnf' : ''}">
+      <div class="solve-num" onclick="SolveSummary.open('${sessionId2}','${solve.id}')" style="cursor:pointer">${n}</div>
+      <div class="solve-time ${effectiveCs === -1 ? 'dnf' : ''}" onclick="SolveSummary.open('${sessionId2}','${solve.id}')" style="cursor:pointer">
         ${timeStr}${pbBadge}
       </div>
       <div class="solve-actions">
@@ -187,6 +188,10 @@ const Sessions = (() => {
   function addSolve(time, penalty, scramble) {
     const sessionId = Storage.getCurrentSessionId();
     const solve = Storage.addSolve(sessionId, { time, penalty, scramble });
+    // Push to cloud if logged in (runs in background, never blocks UI)
+    if (typeof CloudSync !== 'undefined' && CloudSync.isLoggedIn()) {
+      CloudSync.pushSolve(sessionId, solve).catch(e => console.warn('sync:', e));
+    }
     renderSolveList();
     renderSessionSelector(); // update count
     return solve;

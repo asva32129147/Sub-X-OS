@@ -12,14 +12,14 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>">
 
-  <link rel="stylesheet" href="base.css?v=6">
-  <link rel="stylesheet" href="timer.css?v=6">
-  <link rel="stylesheet" href="panels.css?v=6">
-  <link rel="stylesheet" href="modals.css?v=6">
-  <link rel="stylesheet" href="alg-trainer.css?v=6">
+  <link rel="stylesheet" href="base.css?v=11">
+  <link rel="stylesheet" href="timer.css?v=11">
+  <link rel="stylesheet" href="panels.css?v=11">
+  <link rel="stylesheet" href="modals.css?v=11">
+  <link rel="stylesheet" href="alg-trainer.css?v=11">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600&family=Rubik:wght@300;400;600&family=Outfit:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -58,16 +58,21 @@
     <!-- Navigation -->
     <div class="sb-section">
       <div class="sb-label">View</div>
-      <button class="sb-nav active" data-view="timer"   onclick="showView('timer',this)">⏱ Timer</button>
-      <button class="sb-nav"        data-view="trainer" onclick="showView('trainer',this)">🎓 Alg Trainer</button>
+      <button class="sb-nav active" data-view="timer"   onclick="showView('timer',this)">Timer</button>
+      <button class="sb-nav"        data-view="trainer" onclick="showView('trainer',this)">Alg Trainer</button>
     </div>
 
     <!-- Controls (push to bottom) -->
     <div class="sb-section sb-bottom">
       <button id="btn-inspection-toggle" class="sb-ctrl insp-on"
               onclick="Timer.toggleInspection()">INSP: ON</button>
-      <button class="sb-ctrl" onclick="App.nextScramble()">↺ New Scramble</button>
-      <button class="sb-ctrl" id="btn-settings" onclick="Settings.open()">⚙ Settings</button>
+      <button class="sb-ctrl" onclick="App.nextScramble()">New Scramble</button>
+      <button class="sb-ctrl" onclick="SessionManager.open()">Sessions</button>
+      <button class="sb-ctrl" onclick="UniversalImport.open()">Import Data</button>
+      <button class="sb-ctrl" onclick="showView('timeattack',this)">Time Attack</button>
+      <button class="sb-ctrl" id="btn-smartcube" onclick="document.getElementById('smartcube-overlay').classList.toggle('open')">Smart Cube</button>
+      <button class="sb-ctrl" id="btn-account" onclick="AuthUI.open()">Sign In</button>
+      <button class="sb-ctrl" id="btn-settings" onclick="Settings.open()">Settings</button>
     </div>
 
   </nav>
@@ -92,6 +97,7 @@
 
       <!-- Scramble at very top -->
       <div id="scramble-wrap" role="region" aria-label="Scramble">
+        <div id="scramble-event-label" style="display:none"></div>
         <div id="scramble-display" aria-live="polite">Generating...</div>
         <button class="scr-btn" onclick="App.nextScramble()"
                 title="New scramble (N)" aria-label="New scramble">↺</button>
@@ -122,6 +128,11 @@
         <div id="trainer-content"><!-- Populated by AlgTrainer.init() --></div>
       </div>
     </div><!-- /view-trainer -->
+
+    <!-- ── TIME ATTACK VIEW ─────────────────────────────────────────────── -->
+    <div id="view-timeattack" class="view">
+      <div id="time-attack-panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0"><div id="ta-content"></div></div>
+    </div>
 
   </main><!-- /main-area -->
 
@@ -172,14 +183,17 @@
 
   <div class="sb-section">
     <div class="sb-label">View</div>
-    <button class="sb-nav" onclick="showView('timer',null);closeDrawer()">⏱ Timer</button>
-    <button class="sb-nav" onclick="showView('trainer',null);closeDrawer()">🎓 Alg Trainer</button>
+    <button class="sb-nav" onclick="showView('timer',null);closeDrawer()">Timer</button>
+    <button class="sb-nav" onclick="showView('trainer',null);closeDrawer()">Alg Trainer</button>
   </div>
 
   <div class="sb-section">
+    <button class="sb-ctrl" onclick="SessionManager.open();closeDrawer()">Sessions</button>
+    <button class="sb-ctrl" onclick="UniversalImport.open();closeDrawer()">Import Data</button>
+    <button class="sb-ctrl" onclick="showView('timeattack',null);closeDrawer()">Time Attack</button>
     <button class="sb-ctrl" onclick="Timer.toggleInspection();syncInspBtns();closeDrawer()">
       Toggle Inspection</button>
-    <button class="sb-ctrl" onclick="Settings.open();closeDrawer()">⚙ Settings</button>
+    <button class="sb-ctrl" onclick="Settings.open();closeDrawer()">Settings</button>
   </div>
 </div>
 
@@ -192,6 +206,75 @@
       <button id="settings-close" aria-label="Close settings">✕</button>
     </div>
     <div id="settings-content"></div>
+  </div>
+</div>
+
+<!-- ── SESSION MANAGER MODAL ─────────────────────────────────────────────── -->
+<!-- SessionManager.open() creates its modal dynamically -->
+
+<!-- ── UNIVERSAL IMPORT MODAL ─────────────────────────────────────────────── -->
+<!-- UniversalImport.open() creates its modal dynamically -->
+
+<!-- ── SOLVE SUMMARY MODAL ─────────────────────────────────────────────────── -->
+<div id="solve-summary-overlay" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <h2>Solve Detail</h2>
+      <button onclick="SolveSummary.close()" aria-label="Close">✕</button>
+    </div>
+    <div id="solve-summary-content"></div>
+  </div>
+</div>
+<div id="ss-toast" class="ss-toast" aria-live="polite"></div>
+
+<!-- ── SMART CUBE PANEL (sidebar section) ──────────────────────────────────── -->
+<div id="smartcube-overlay" class="modal-overlay" role="dialog">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <h2>Smart Cube</h2>
+      <button onclick="document.getElementById('smartcube-overlay').classList.remove('open')" aria-label="Close">✕</button>
+    </div>
+    <div id="smartcube-panel">
+      <div id="smartcube-status" data-state="idle" class="sc-status">
+        No cube connected
+      </div>
+      <div class="sc-actions">
+        <button id="btn-smartcube-connect" class="btn-primary" style="margin-right:6px">
+          🔵 Connect Cube
+        </button>
+        <button id="btn-smartcube-disconnect" style="display:none" class="btn-sm">Disconnect</button>
+        <button id="btn-gyro-toggle" class="btn-sm" onclick="Gyro.toggle()" title="Phone gyro">
+          📡 Gyro
+        </button>
+        <button id="btn-gyro-reset" class="btn-sm" onclick="Gyro.reset()" title="Reset gyro calibration">
+          ↺ Reset
+        </button>
+      </div>
+      <!-- Gyro visual -->
+      <div id="gyro-panel" style="display:none">
+        <div class="sc-section-label">Gyro Orientation</div>
+        <div id="gyro-cube-wrap">
+          <div id="gyro-cube">
+            <div class="gc-face gc-front">F</div>
+            <div class="gc-face gc-back">B</div>
+            <div class="gc-face gc-left">L</div>
+            <div class="gc-face gc-right">R</div>
+            <div class="gc-face gc-top">U</div>
+            <div class="gc-face gc-bottom">D</div>
+          </div>
+        </div>
+        <div class="sc-gyro-vals" id="gyro-vals">α:— β:— γ:—</div>
+        <div class="sc-section-label" style="margin-top:8px">Drag to calibrate zero point</div>
+        <div id="gyro-cal-bar" title="Drag to offset calibration">
+          <div id="gyro-cal-thumb"></div>
+        </div>
+      </div>
+      <!-- Live move display -->
+      <div class="sc-section-label" id="sc-move-label" style="display:none">Live Moves</div>
+      <div id="smartcube-moves" class="sc-moves"></div>
+      <!-- Cube type info -->
+      <div id="sc-info" class="sc-info"></div>
+    </div>
   </div>
 </div>
 
@@ -208,6 +291,10 @@
   <button class="mob-tab" role="tab" aria-selected="false"
           onclick="mobileTab('trainer',this)">
     <span class="mob-tab-icon">🎓</span><span>Trainer</span>
+  </button>
+  <button class="mob-tab" role="tab" aria-selected="false"
+          onclick="mobileTab('timeattack',this)">
+    <span class="mob-tab-icon">⚡</span><span>Attack</span>
   </button>
   <button class="mob-tab" role="tab" aria-selected="false"
           onclick="Settings.open()">
@@ -233,16 +320,26 @@
      alg-trainer.js → utils, storage, alg-data
      app.js      → everything (loaded last)
 ══════════════════════════════════════════════════════════════════════════════ -->
-<script src="utils.js?v=6"></script>
-<script src="storage.js?v=6"></script>
-<script src="scramble.js?v=6"></script>
-<script src="timer.js?v=6"></script>
-<script src="sessions.js?v=6"></script>
-<script src="stats.js?v=6"></script>
-<script src="settings.js?v=6"></script>
-<script src="alg-data.js?v=6"></script>
-<script src="alg-trainer.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<!-- Supabase JS SDK — required for cloud sync + auth -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js?v=11"></script>
+<script src="storage.js?v=11"></script>
+<script src="scramble.js?v=11"></script>
+<script src="timer.js?v=11"></script>
+<script src="sessions.js?v=11"></script>
+<script src="stats.js?v=11"></script>
+<script src="settings.js?v=11"></script>
+<script src="alg-data.js?v=11"></script>
+<script src="alg-trainer.js?v=11"></script>
+<script src="solve-summary.js?v=11"></script>
+<script src="smartcube.js?v=11"></script>
+<script src="gyro.js?v=11"></script>
+<script src="session-manager.js?v=11"></script>
+<script src="universal-import.js?v=11"></script>
+<script src="time-attack.js?v=11"></script>
+<script src="cloud-sync.js?v=11"></script>
+<script src="auth-ui.js?v=11"></script>
+<script src="app.js?v=11"></script>
 
 <script>
 // ── View switching ────────────────────────────────────────────────────────────
@@ -255,6 +352,7 @@ function showView(name, btn) {
   if (btn) btn.classList.add('active');
   if (name === 'trainer') { AlgTrainer.show(); Timer.cancelAll(); }
   else AlgTrainer.hide();
+  if (name === 'timeattack') { TimeAttack.show(); Timer.cancelAll(); }
 }
 
 // ── Mobile drawer ─────────────────────────────────────────────────────────────

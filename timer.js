@@ -146,10 +146,24 @@ const Timer = (() => {
     }
 
     if (cfg.timerInput === 'stackmat') {
-      if (e.code === 'ControlLeft')  leftCtrl = true;
+      if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
+        e.preventDefault(); // prevent browser shortcuts (Ctrl+W etc)
+        if (e.repeat) return; // ignore key-hold auto-repeat
+        if (e.code === 'ControlLeft')  leftCtrl  = true;
+        if (e.code === 'ControlRight') rightCtrl = true;
+        if (leftCtrl && rightCtrl) handlePress();
+      }
+      if (e.code === 'Escape') cancelAll();
+      return;
+    }
+
+    // Space mode also accepts both Ctrl keys as a stackmat-style trigger
+    if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
+      e.preventDefault();
+      if (e.repeat) return;
+      if (e.code === 'ControlLeft')  leftCtrl  = true;
       if (e.code === 'ControlRight') rightCtrl = true;
       if (leftCtrl && rightCtrl) handlePress();
-      if (e.code === 'Escape') cancelAll();
       return;
     }
 
@@ -167,6 +181,13 @@ const Timer = (() => {
     if (cfg.timerInput === 'stackmat') {
       const was = leftCtrl && rightCtrl;
       if (e.code === 'ControlLeft')  leftCtrl = false;
+      if (e.code === 'ControlRight') rightCtrl = false;
+      if (was) handleRelease();
+      return;
+    }
+    if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
+      const was = leftCtrl && rightCtrl;
+      if (e.code === 'ControlLeft')  leftCtrl  = false;
       if (e.code === 'ControlRight') rightCtrl = false;
       if (was) handleRelease();
       return;

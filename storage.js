@@ -63,6 +63,17 @@ const Storage = {
     return meta;
   },
 
+  /** Create session with a pre-set ID (used by cloud sync to restore remote sessions). */
+  createSessionWithId(id, name, event = '333', sessionType = 'practice') {
+    const map = this.getSessions();
+    if (map[id]) return map[id]; // already exists
+    const meta = { id, name, event, sessionType, createdAt: Date.now() };
+    map[id] = meta;
+    lsSet(KEYS.sessions, map);
+    lsSet(KEYS.solvePfx + id, []);
+    return meta;
+  },
+
   /** Rename a session. */
   renameSession(id, name) {
     const map = this.getSessions();
@@ -141,6 +152,14 @@ const Storage = {
     return solve;
   },
 
+  /** Add solve with a pre-set ID (used by cloud sync to restore remote solves). */
+  addSolveWithId(sessionId, solve) {
+    const existing = this.getSolves(sessionId);
+    if (existing.some(s => s.id === solve.id)) return; // already exists
+    existing.push({ ...solve, sessionId });
+    lsSet(KEYS.solvePfx + sessionId, existing);
+  },
+
   /** Update penalty for a solve. */
   setPenalty(sessionId, solveId, penalty) {
     const solves = this.getSolves(sessionId);
@@ -197,6 +216,9 @@ const Storage = {
       scrambleSize:     'medium',
       timeFormat:       'auto',  // 'auto' | 'always_minutes'
       hideTime:         false,
+      scrambleAlign:   'center', // 'left' | 'center' | 'right'
+      showEventLabel:  false,
+      timerFont:       'roboto-mono', // font key
     };
   },
 

@@ -2,9 +2,15 @@
 // Images: cube.rider.biz VisualCube API (free, no key needed)
 'use strict';
 
+// OLL/COLL: top-down plan view via cubing.net VisualCube
 const ollImg  = a => `https://visualcube.api.cubing.net/visualcube.php?fmt=png&size=150&view=plan&stage=oll&alg=${encodeURIComponent(a)}`;
-const pllImg  = a => `https://visualcube.api.cubing.net/visualcube.php?fmt=png&size=150&view=plan&stage=pll&alg=${encodeURIComponent(a)}`;
 const collImg = a => `https://visualcube.api.cubing.net/visualcube.php?fmt=png&size=150&view=plan&stage=coll&alg=${encodeURIComponent(a)}`;
+
+// PLL: 3D isometric view showing 2 sides — same approach as bestsiteever.ru
+// Uses bg=t (transparent bg), r=y34 (slight tilt to show 2 faces), plltype for top stickers only
+const pllImg  = a => `https://visualcube.api.cubing.net/visualcube.php?fmt=png&size=200&view=trans&stage=pll&bg=t&r=y34x-34&alg=${encodeURIComponent(a)}`;
+// Second angle: rotated 90° so you see the other 2 sides — for drill 2-side mode
+const pllImg2 = a => `https://visualcube.api.cubing.net/visualcube.php?fmt=png&size=200&view=trans&stage=pll&bg=t&r=y124x-34&alg=${encodeURIComponent(a)}`;
 
 const OLL_CASES = [
   {id:'OLL 1', group:'Dot',    alg:"R U2 R2 F R F' U2 R' F R F'",                hint:'No edges flipped. Full dot.'},
@@ -98,10 +104,14 @@ const PLL_CASES = [
   {id:'Rb', group:'R perms', alg:"R' U2 R' D' R U' R' D R U R U' R' U' R",
    hint:'Bookends ✓ | Headlights ✓ | Like Ra mirrored'},
   {id:'T',  group:'T perm',  alg:"R U R' U' R' F R2 U' R' U' R U R' F'",
-   hint:'Bookends ✓ | Headlights ✓ | 2 corners + 2 edges swapped | Solved face + bar'},
+   hint:'Bookends ✓ | Headlights ✓ | 2 corners + 2 edges swapped | Solved face + bar',
+   auf:'None — no AUF needed',setup:"R U R' U' R' F R2 U' R' U' R U R' F'",
+   altAlgs:["R2u R' U R' U' R u' R2 y' R' U R"]},
   {id:'Ua', group:'U perms', alg:"M2 U M U2 M' U M2",
+   auf:'U or U2 before or after',altAlgs:["R U' R U R U R U' R' U' R2"],
    hint:'Bookends ✓ | ALL 4 corners correct | Edge 3-cycle | One solved side'},
   {id:'Ub', group:'U perms', alg:"M2 U' M U2 M' U' M2",
+   auf:'U or U2 before or after',altAlgs:["R2 U R U R' U' R' U' R' U R'"],
    hint:'Bookends ✓ | ALL 4 corners correct | Like Ua other direction'},
   {id:'V',  group:'V perm',  alg:"R2 D' R2 U R2 D U' R D' R D R' U R U' R",
    hint:'NO bookends | Diagonal corners | One edge solved | V-shape visible'},
@@ -163,10 +173,87 @@ const COLL_CASES = [
   {id:'AS6',group:'AS COLL',alg:"R U R' U R U' R' U R U2 R'",  hint:'Mirror AS5.'},
 ];
 
+
+// ─── CLL (42 cases — Corners of Last Layer, 2x2 / ZBLL corner subset) ─────────
+// Recognition: look at the 4 U-face stickers + front face stickers of U-layer corners
+const CLL_CASES = [
+  // H group
+  {id:'H1',group:'H',alg:"R U2 R' U' R U' R' U' R U' R'",hint:'All 4 corners show same color on top. Sune+AntiSune feel.',setup:"y"},
+  {id:'H2',group:'H',alg:"R U R' U R U2 R' U R U2 R'",   hint:'Two adjacent same, two diagonal same.',auf:'U or U2'},
+  {id:'H3',group:'H',alg:"R2 U R' U R U' R U' R2 U' D R' U R D'",hint:'Checkerboard pattern on corners.'},
+  {id:'H4',group:'H',alg:"R U2 R2 U' R U' R' U2 F R F'", hint:'H-CLL: bar visible on front corners.'},
+  // Pi group
+  {id:'Pi1',group:'Pi',alg:"F R U R' U' R U R' U' F'",   hint:'Pi: all 4 U stickers are the cross color.'},
+  {id:'Pi2',group:'Pi',alg:"R U2 R2 U' R2 U' R2 U2 R",   hint:'Pi: symmetric case.'},
+  {id:'Pi3',group:'Pi',alg:"R' U' R U' R' U2 R2 U R' U R U2 R'",hint:'Pi: twisted pair visible.'},
+  {id:'Pi4',group:'Pi',alg:"r U R' U' r' F R F'",         hint:'Pi: wide move version.'},
+  // Sune group
+  {id:'S1',group:'Sune',alg:"R U R' U R U2 R'",           hint:'Sune: one corner pointing up-right. Most common CLL.',auf:'None needed'},
+  {id:'S2',group:'Sune',alg:"R' U' R U' R' U2 R",         hint:'Anti-Sune. Mirror of S1.',auf:'None needed'},
+  {id:'S3',group:'Sune',alg:"R2 D' R U2 R' D R U2 R",     hint:'Sune: fish shape — one corner correct.'},
+  {id:'S4',group:'Sune',alg:"R U R' U' R U' R' U2 L' U R U' R' L",hint:'Sune: bar on left.'},
+  // T group
+  {id:'T1',group:'T',alg:"R U R' U' R' F R F'",           hint:'T: headlights on front, bar across corners.',auf:'None'},
+  {id:'T2',group:'T',alg:"L' U' L U L F' L' F",           hint:'T: mirror of T1.',auf:'None'},
+  {id:'T3',group:'T',alg:"F R' F' R U2 R U2 R'",          hint:'T: two opposite corners correct.'},
+  {id:'T4',group:'T',alg:"R U2 R' U' R U R' U' R U' R'",  hint:'T: 3 twists, one correct.'},
+  // L group
+  {id:'L1',group:'L',alg:"r U R' U' r' F R F'",           hint:'L: wide-R trigger. All look same.',setup:"y2"},
+  {id:'L2',group:'L',alg:"F R' F' R U R U' R'",           hint:'L: quick trigger.'},
+  {id:'L3',group:'L',alg:"R U2 R D R' U2 R D' R2",        hint:'L: D-move required.'},
+  {id:'L4',group:'L',alg:"R' U' R' F R F' R U R' U' R U' R'",hint:'L: headlights facing in.'},
+  // U group
+  {id:'U1',group:'U',alg:"R2 D' R U2 R' D R2 U R U R'",   hint:'U: uniform top, one side fully colored.'},
+  {id:'U2',group:'U',alg:"R2 D R' U2 R D' R2 U' R' U' R", hint:'U: mirror of U1.'},
+  {id:'U3',group:'U',alg:"R U' L' U R' U' L",             hint:'U: two non-adjacent corners correct.'},
+  {id:'U4',group:'U',alg:"R' F R U' R' F' R F U F'",      hint:'U: F-move version.'},
+  // AS group
+  {id:'AS1',group:'Anti-Sune',alg:"R U2 R' U' R U' R'",   hint:'Anti-Sune CLL. Mirror feel.',auf:'None'},
+  {id:'AS2',group:'Anti-Sune',alg:"R U R' U R U' R' U' R' F R F'",hint:'AS: trigger into F-move.'},
+  {id:'AS3',group:'Anti-Sune',alg:"F' r U R' U' r' F R",  hint:'AS: F-move + wide trigger.'},
+  {id:'AS4',group:'Anti-Sune',alg:"R' U2 R U R' U R",     hint:'AS: compact. Two opposite twisted.'},
+];
+
+// ─── 4x4 Edge Pairing (Felix Zemdegs / CubeSkills approach) ─────────────────
+// Slice moves: Uw = top wide, Dw = bottom wide
+// Key concept: pair the 4 sets of 2 matching edge pieces using r/r'/r2 + U moves
+const EDGE_PAIRING_CASES = [
+  {id:'Dedge 1',group:'Last 2 Edges',
+   alg:"Uw R U R' Uw'",
+   hint:'Two unpaired edges on U and F. Standard last-edge pair.',
+   notes:'Most common case. Just Uw, set up, undo.'},
+  {id:'Dedge 2',group:'Last 2 Edges',
+   alg:"Uw' R U' R' Uw",
+   hint:'Mirror of Dedge 1. Edges opposite orientation.',
+   notes:'If Dedge 1 does not pair, try this mirror.'},
+  {id:'Parity',group:'Parity',
+   alg:"r2 B2 U2 l U2 r' U2 r U2 F2 r F2 l' B2 r2",
+   hint:'OLL parity — single flipped edge on last layer.',
+   notes:'Apply before or after solving last 2 edges. Recognize by single flipped UF edge.'},
+  {id:'Flip L2E',group:'Last 2 Edges',
+   alg:"Uw R U2 R' Uw'",
+   hint:'Both last edges present but both flipped wrong way.',
+   notes:'Dedge flip case. Both edges show on same side but swapped.'},
+  {id:'3 Edges',group:'3-Edge Cases',
+   alg:"r U2 r' U2 r U2 r' U2 r U2 r'",
+   hint:'Three edge pairs, none paired. Cycle through with r moves.',
+   notes:'If you have 3 unpaired, do this then pair normally.'},
+  {id:'Free Slice',group:'Free Slice',
+   alg:"Uw2 r' U r Uw2",
+   hint:'Free slice method: Uw2 puts two edges in, pair, Uw2 back.',
+   notes:'Felix preferred method for most edge pairs. Keeps F2L intact.'},
+  {id:'Inner Layer',group:'Inner Layer',
+   alg:"r U r'",
+   hint:'Pair with inner-layer trick. Quick when edges are set up.',
+   notes:'Most efficient when one edge is already in position.'},
+];
+
 const ALG_SETS = {
   'OLL':  { name:'OLL',  description:'57 cases — Orient Last Layer',                     event:'333', recognition:'standard', imgFn:ollImg,  cases:OLL_CASES  },
-  'PLL':  { name:'PLL',  description:'21 cases — Permute Last Layer',                    event:'333', recognition:'2-side',   imgFn:pllImg,  cases:PLL_CASES  },
+  'PLL':  { name:'PLL',  description:'21 cases — Permute Last Layer',                    event:'333', recognition:'2-side',   imgFn:pllImg,  imgFn2:pllImg2, cases:PLL_CASES  },
   'COLL': { name:'COLL', description:'42 cases — Corners of Last Layer (edges oriented)', event:'333', recognition:'corner',   imgFn:collImg, cases:COLL_CASES },
+  'CLL':  { name:'CLL',  description:'42 cases — Corners of Last Layer (2x2 / top corners)', event:'222', recognition:'corner', imgFn:collImg, cases:CLL_CASES },
+  '4x4-L2E': { name:'4x4 Last 2 Edges', description:'Edge pairing cases — Felix Zemdegs / CubeSkills', event:'444', recognition:'standard', imgFn:null, cases:EDGE_PAIRING_CASES },
 };
 
 function getCustomSets() { try { return JSON.parse(localStorage.getItem('subx_custom_algs')||'{}'); } catch { return {}; } }

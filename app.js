@@ -13,11 +13,21 @@ const App = (() => {
     Settings.init();
     Timer.init();
     AlgTrainer.init();
+    SolveSummary.init();
+    SmartCube.init();
+    Gyro.init();
+    TimeAttack.init();
+    CloudSync.init();
+    AuthUI.init();
 
     const meta = Storage.getCurrentSession();
     currentEvent = meta?.event || '333';
 
     nextScramble();
+    // Apply saved appearance settings
+    const _s = Storage.getSettings();
+    if (_s.timerFont)     Settings.applyFont(_s.timerFont);
+    if (_s.scrambleAlign) Settings.applyScrambleAlign(_s.scrambleAlign);
 
     // Escape closes any open modal/overlay
     document.addEventListener('keydown', e => {
@@ -32,9 +42,30 @@ const App = (() => {
 
   // ─── Scramble ──────────────────────────────────────────────────────────────
   function nextScramble() {
-    currentScramble = generateScramble(currentEvent);
+    // Guard: EVENTS must be loaded (scramble.js) before generating
+    if (typeof generateScramble !== 'function') {
+      console.warn('scramble.js not loaded yet');
+      return;
+    }
+    try {
+      currentScramble = generateScramble(currentEvent);
+    } catch(e) {
+      console.error('scramble gen failed:', e);
+      currentScramble = 'Error generating scramble';
+    }
     const el = document.getElementById('scramble-display');
     if (!el) return;
+    // Show event label above scramble if enabled
+    const labelEl = document.getElementById('scramble-event-label');
+    if (labelEl) {
+      const s = Storage.getSettings();
+      if (s.showEventLabel && typeof getEventName === 'function') {
+        labelEl.textContent = getEventName(currentEvent);
+        labelEl.style.display = 'block';
+      } else {
+        labelEl.style.display = 'none';
+      }
+    }
     // Megaminx is multi-line
     if (currentScramble.includes('\n')) {
       el.innerHTML = currentScramble.split('\n')
@@ -99,6 +130,9 @@ const App = (() => {
     const s = Storage.getSettings();
     if (s.hideTime) document.body.classList.add('hide-time');
     else            document.body.classList.remove('hide-time');
+    if (s.timerFont)     Settings.applyFont(s.timerFont);
+    if (s.scrambleAlign) Settings.applyScrambleAlign(s.scrambleAlign);
+    nextScramble(); // refresh label visibility
   }
 
   // ─── PWA service worker ────────────────────────────────────────────────────
