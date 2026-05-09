@@ -43,7 +43,12 @@ const SmartCube = (() => {
   // ── Connect ───────────────────────────────────────────────────────────────
   async function connect() {
     if (!navigator.bluetooth) {
-      _showStatus('Web Bluetooth not available. Use Chrome or Edge on desktop.', 'error');
+      const msg = 'Web Bluetooth is not available in this browser.\n\n' +
+        'Use Chrome or Edge on Windows / Mac / Android.\n' +
+        'Safari and Firefox do not support Web Bluetooth.\n\n' +
+        'Also make sure Bluetooth is turned on in your system settings.';
+      _showStatus('Not supported — use Chrome or Edge.', 'error');
+      alert(msg);
       return false;
     }
     try {
@@ -210,19 +215,8 @@ const SmartCube = (() => {
 
   // ── Init ──────────────────────────────────────────────────────────────────
   function init() {
-    document.getElementById('btn-smartcube-connect')
-      ?.addEventListener('click', connect);
-    document.getElementById('btn-smartcube-disconnect')
-      ?.addEventListener('click', disconnect);
-
-    // Check if Web Bluetooth is available
-    if (!navigator.bluetooth) {
-      const status = document.getElementById('smartcube-status');
-      if (status) {
-        status.textContent = 'Web Bluetooth requires Chrome or Edge on desktop/Android.';
-        status.dataset.state = 'error';
-      }
-    }
+    // onclick handlers are attached directly in HTML to avoid timing issues
+    // (modal may not be in DOM when init() runs)
   }
 
   return {
