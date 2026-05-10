@@ -31,13 +31,19 @@ const AlgTrainer = (() => {
     // some browsers optimise away hidden DOM measurements.
   }
   function show() {
-    // Always ensure the trainer content is populated when the view becomes visible
     const el = document.getElementById('trainer-content');
     if (!el) return;
     if (!activeSet) {
-      renderSetPicker();
+      try {
+        renderSetPicker();
+      } catch(e) {
+        console.error('AlgTrainer.show error:', e);
+        el.innerHTML = `<div style="padding:20px;color:var(--red);font-size:12px">
+          Trainer failed to load: ${e.message}<br>
+          <button class="btn-sm" style="margin-top:8px" onclick="AlgTrainer.show()">Retry</button>
+        </div>`;
+      }
     }
-    // If a set is active, the trainer UI is already rendered - no action needed
   }
   function hide() { _stopSTT(); _stopTick(); }
 
@@ -45,6 +51,12 @@ const AlgTrainer = (() => {
   function renderSetPicker() {
     const el = document.getElementById('trainer-content');
     if (!el) return;
+    // Safety: ensure alg-data.js is loaded
+    if (typeof getAllSets !== 'function') {
+      el.innerHTML = '<div style="padding:20px;color:var(--text3);font-size:12px">Loading algorithm data…</div>';
+      setTimeout(() => renderSetPicker(), 500);
+      return;
+    }
     const sets = getAllSets();
     const groups = {};
     for (const [key, set] of Object.entries(sets)) {

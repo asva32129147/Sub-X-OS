@@ -17,8 +17,12 @@ const App = (() => {
     SmartCube.init();
     Gyro.init();
     TimeAttack.init();
-    CloudSync.init();
-    AuthUI.init();
+    VirtualCube.init();
+    // CloudSync and AuthUI wait for deferred Supabase SDK
+    window.addEventListener('load', () => {
+      if (typeof CloudSync !== 'undefined') CloudSync.init();
+      if (typeof AuthUI !== 'undefined') AuthUI.init();
+    });
 
     const meta = Storage.getCurrentSession();
     currentEvent = meta?.event || '333';
@@ -28,6 +32,8 @@ const App = (() => {
     const _s = Storage.getSettings();
     if (_s.timerFont)     Settings.applyFont(_s.timerFont);
     if (_s.scrambleAlign) Settings.applyScrambleAlign(_s.scrambleAlign);
+    if (_s.timerSize)     Settings.applyTimerSize(_s.timerSize);
+    if (_s.scrambleSize)  Settings.applyScrambleSize(_s.scrambleSize);
 
     // Escape closes any open modal/overlay
     document.addEventListener('keydown', e => {
@@ -67,6 +73,11 @@ const App = (() => {
       }
     }
     // Megaminx is multi-line
+    // Apply to virtual cube if active
+    const s2 = Storage.getSettings();
+    if (s2.timerInput === 'virtual' && typeof VirtualCube !== 'undefined') {
+      VirtualCube.applyScramble(currentScramble);
+    }
     if (currentScramble.includes('\n')) {
       el.innerHTML = currentScramble.split('\n')
         .map(l => `<span>${escHtml(l)}</span>`).join('<br>');
@@ -132,7 +143,14 @@ const App = (() => {
     else            document.body.classList.remove('hide-time');
     if (s.timerFont)     Settings.applyFont(s.timerFont);
     if (s.scrambleAlign) Settings.applyScrambleAlign(s.scrambleAlign);
-    nextScramble(); // refresh label visibility
+    // Virtual cube mode
+    if (s.timerInput === 'virtual') {
+      VirtualCube.show();
+      VirtualCube.applyScramble(currentScramble || '');
+    } else {
+      VirtualCube.hide();
+    }
+    nextScramble();
   }
 
   // ─── PWA service worker ────────────────────────────────────────────────────

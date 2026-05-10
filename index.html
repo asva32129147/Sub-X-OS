@@ -12,11 +12,11 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>">
 
-  <link rel="stylesheet" href="base.css?v=13">
-  <link rel="stylesheet" href="timer.css?v=13">
-  <link rel="stylesheet" href="panels.css?v=13">
-  <link rel="stylesheet" href="modals.css?v=13">
-  <link rel="stylesheet" href="alg-trainer.css?v=13">
+  <link rel="stylesheet" href="base.css?v=16">
+  <link rel="stylesheet" href="timer.css?v=16">
+  <link rel="stylesheet" href="panels.css?v=16">
+  <link rel="stylesheet" href="modals.css?v=16">
+  <link rel="stylesheet" href="alg-trainer.css?v=16">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600&family=Rubik:wght@300;400;600&family=Outfit:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -118,6 +118,16 @@
       </div>
 
       <!-- Stat detail popup -->
+      <!-- Virtual cube panel (shown when virtual input mode is active) -->
+      <div id="vc-wrap" style="display:none">
+        <div id="vc-header">
+          <span id="vc-last-move" class="vc-last-move"></span>
+          <span id="vc-solved" class="vc-solved" style="display:none">SOLVED!</span>
+          <span class="vc-hint">U F R L D B (+ ' or 2) &nbsp;·&nbsp; execute moves to solve the scramble</span>
+        </div>
+        <div id="vc-faces"></div>
+      </div>
+
       <div id="stat-detail-overlay" role="dialog" aria-hidden="true"></div>
 
     </div><!-- /view-timer -->
@@ -264,6 +274,7 @@
           </div>
         </div>
         <div class="sc-gyro-vals" id="gyro-vals">α:— β:— γ:—</div>
+        <div id="gyro-mode-label" style="font-size:9px;color:var(--text3);text-align:center;margin-top:3px">Not active</div>
         <div class="sc-section-label" style="margin-top:8px">Drag to calibrate zero point</div>
         <div id="gyro-cal-bar" title="Drag to offset calibration">
           <div id="gyro-cal-thumb"></div>
@@ -321,25 +332,26 @@
      app.js      → everything (loaded last)
 ══════════════════════════════════════════════════════════════════════════════ -->
 <!-- Supabase JS SDK — required for cloud sync + auth -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="utils.js?v=13"></script>
-<script src="storage.js?v=13"></script>
-<script src="scramble.js?v=13"></script>
-<script src="timer.js?v=13"></script>
-<script src="sessions.js?v=13"></script>
-<script src="stats.js?v=13"></script>
-<script src="settings.js?v=13"></script>
-<script src="alg-data.js?v=13"></script>
-<script src="alg-trainer.js?v=13"></script>
-<script src="solve-summary.js?v=13"></script>
-<script src="smartcube.js?v=13"></script>
-<script src="gyro.js?v=13"></script>
-<script src="session-manager.js?v=13"></script>
-<script src="universal-import.js?v=13"></script>
-<script src="time-attack.js?v=13"></script>
-<script src="cloud-sync.js?v=13"></script>
-<script src="auth-ui.js?v=13"></script>
-<script src="app.js?v=13"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="utils.js?v=16"></script>
+<script src="storage.js?v=16"></script>
+<script src="scramble.js?v=16"></script>
+<script src="timer.js?v=16"></script>
+<script src="sessions.js?v=16"></script>
+<script src="stats.js?v=16"></script>
+<script src="settings.js?v=16"></script>
+<script src="alg-data.js?v=16"></script>
+<script src="alg-trainer.js?v=16"></script>
+<script src="solve-summary.js?v=16"></script>
+<script src="smartcube.js?v=16"></script>
+<script src="gyro.js?v=16"></script>
+<script src="session-manager.js?v=16"></script>
+<script src="universal-import.js?v=16"></script>
+<script src="time-attack.js?v=16"></script>
+<script src="virtual-cube.js?v=16"></script>
+<script src="cloud-sync.js?v=16"></script>
+<script src="auth-ui.js?v=16"></script>
+<script src="app.js?v=16"></script>
 
 <script>
 // ── View switching ────────────────────────────────────────────────────────────
@@ -429,6 +441,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────────────
+// Fallback: if scramble still says 'Generating...' 800ms after load, retry
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const el = document.getElementById('scramble-display');
+    if (el && (el.textContent.trim() === 'Generating...' || el.textContent.trim() === '')) {
+      if (typeof App !== 'undefined') App.nextScramble();
+    }
+  }, 800);
+});
+
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT'
       || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;

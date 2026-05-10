@@ -22,7 +22,17 @@ const TimeAttack = (() => {
   }
 
   function show() {
-    render();
+    const el = document.getElementById('ta-content');
+    if (!el) { setTimeout(show, 200); return; }
+    try {
+      render();
+    } catch(e) {
+      console.error('TimeAttack.show error:', e);
+      el.innerHTML = `<div style="padding:20px;color:var(--red);font-size:12px">
+        Time Attack failed to load: ${e.message}<br>
+        <button class="btn-sm" style="margin-top:8px" onclick="TimeAttack.show()">Retry</button>
+      </div>`;
+    }
   }
 
   // ── Render main ───────────────────────────────────────────────────────────
