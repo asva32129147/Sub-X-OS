@@ -4,7 +4,8 @@
 //   'except-bld'  — skip for BLD events (333bf, 444bf, 555bf, 333fm)
 //   'updown'      — Up arrow starts inspection, Down starts timer (csTimer up/down)
 //   'off'         — no inspection
-// Input modes: 'space' (default) | 'stackmat' (both Ctrl keys)
+// Input modes: 'space' (default) | 'virtual' (virtual cube on-screen)
+// Both Ctrl keys always work as a trigger alongside spacebar
 // Key change from v1: inspection starts with a SINGLE TAP (no hold needed)
 // Red colour (insp-ending state) shown the moment you press to stop inspection
 
@@ -87,8 +88,6 @@ const Timer = (() => {
     const m = cfg.timerInput;
     if (mode === 'updown') {
       el.innerHTML = '<kbd>↑</kbd> inspection &nbsp;·&nbsp; <kbd>↓</kbd> start timer &nbsp;·&nbsp; <kbd>Esc</kbd> cancel';
-    } else if (m === 'stackmat') {
-      el.innerHTML = 'Hold both <kbd>Ctrl</kbd> keys &nbsp;·&nbsp; <kbd>Esc</kbd> cancel';
     } else if (mode === 'off') {
       el.innerHTML = 'Hold <kbd>Space</kbd> to start &nbsp;·&nbsp; <kbd>Space</kbd> to stop &nbsp;·&nbsp; <kbd>Esc</kbd> cancel';
     } else {
@@ -145,19 +144,7 @@ const Timer = (() => {
       return;
     }
 
-    if (cfg.timerInput === 'stackmat') {
-      if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
-        e.preventDefault(); // prevent browser shortcuts (Ctrl+W etc)
-        if (e.repeat) return; // ignore key-hold auto-repeat
-        if (e.code === 'ControlLeft')  leftCtrl  = true;
-        if (e.code === 'ControlRight') rightCtrl = true;
-        if (leftCtrl && rightCtrl) handlePress();
-      }
-      if (e.code === 'Escape') cancelAll();
-      return;
-    }
-
-    // Space mode also accepts both Ctrl keys as a stackmat-style trigger
+    // Both Ctrl keys always work as a timer trigger (no separate stackmat mode)
     if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
       e.preventDefault();
       if (e.repeat) return;
@@ -178,13 +165,6 @@ const Timer = (() => {
     const mode = s.inspectionMode ?? (s.inspection ? 'always' : 'off');
     if (mode === 'updown') return;
 
-    if (cfg.timerInput === 'stackmat') {
-      const was = leftCtrl && rightCtrl;
-      if (e.code === 'ControlLeft')  leftCtrl = false;
-      if (e.code === 'ControlRight') rightCtrl = false;
-      if (was) handleRelease();
-      return;
-    }
     if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
       const was = leftCtrl && rightCtrl;
       if (e.code === 'ControlLeft')  leftCtrl  = false;
@@ -241,6 +221,11 @@ const Timer = (() => {
   // Running: any press → stop timer
 
   function handlePress() {
+    // Manual mode: show text input for time entry instead
+    if (cfg.timerInput === 'manual') {
+      _showManualInput();
+      return;
+    }
     if (state === S.RUNNING) { stopTimer(); return; }
     if (state === S.STOPPED) { state = S.IDLE; setState('idle'); return; }
 
@@ -346,13 +331,45 @@ const Timer = (() => {
     rafId = requestAnimationFrame(tick);
   }
 
+  // ── Multi-phase split tracking ─────────────────────────────────────────────
+  let phases = [];  // array of split times in cs
+
   function stopTimer() {
     cancelAnimationFrame(rafId); rafId = null;
     const t = Math.floor((performance.now() - startTime) / 10);
     elapsed = t; state = S.STOPPED; setState('stopped');
     setDisplay(t);
     const pen = _inspPenalty; _inspPenalty = '';
-    if (typeof App !== 'undefined') App.onSolveComplete(t, pen);
+
+    // Multi-phase: record split and continue if phases not done
+    const s = Storage.getSettings();
+    if (s.multiPhase && phases.length < (s.phaseCount || 4) - 1) {
+      phases.push(t);
+      _showPhaseSplit(t, phases.length);
+      // Restart timer for next phase
+      state = S.IDLE; setState('idle');
+      startTime = performance.now();
+      elapsed = 0;
+      rafId = requestAnimationFrame(tick);
+      state = S.RUNNING; setState('running');
+      return;
+    }
+
+    // Final phase or no multi-phase
+    const allPhases = phases.length ? [...phases, t] : null;
+    phases = [];
+    if (typeof App !== 'undefined') App.onSolveComplete(t, pen, allPhases);
+  }
+
+  function _showPhaseSplit(t, phaseNum) {
+    const s   = Storage.getSettings();
+    const lbl = (s.phaseLabels || '').split(',')[phaseNum - 1]?.trim() || ('Phase ' + phaseNum);
+    const el  = document.getElementById('inspection-display');
+    if (el) {
+      el.textContent   = lbl + ': ' + formatTime(t);
+      el.style.display = 'block';
+      setTimeout(() => { if (el) el.style.display = 'none'; }, 1500);
+    }
   }
 
   // ─── Cancel ───────────────────────────────────────────────────────────────

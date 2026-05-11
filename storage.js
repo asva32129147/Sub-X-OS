@@ -216,9 +216,24 @@ const Storage = {
       scrambleSize:     'medium',
       timeFormat:       'auto',  // 'auto' | 'always_minutes'
       hideTime:         false,
-      scrambleAlign:   'center', // 'left' | 'center' | 'right'
+      scrambleAlign:   'center',    // 'left' | 'center' | 'right'
       showEventLabel:  false,
-      timerFont:       'roboto-mono', // font key
+      timerFont:       'roboto-mono',
+      timerSize:       'large',     // 'small' | 'medium' | 'large' | 'xlarge'
+      timeFormat:      'auto',      // 'auto' | 'always_minutes' | 'centiseconds'
+      // Multi-phase
+      multiPhase:      false,
+      phaseCount:      4,
+      phaseLabels:     'Cross,F2L,OLL,PLL',
+      // Display
+      showSessionStats: true,
+      showSolveCount:   true,
+      pbAlert:          true,
+      // Scramble
+      scrambleSize:    'medium',    // 'small' | 'medium' | 'large'
+      // Batch mode
+      batchMode:       false,
+      batchSize:       5,
     };
   },
 

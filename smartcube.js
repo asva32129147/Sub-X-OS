@@ -44,52 +44,80 @@ const SmartCube = (() => {
   async function connect() {
     if (!navigator.bluetooth) {
       const msg = 'Web Bluetooth is not available in this browser.\n\n' +
-        'Use Chrome or Edge on Windows / Mac / Android.\n' +
+        'Use Chrome or Edge on Windows, Mac, or Android.\n' +
         'Safari and Firefox do not support Web Bluetooth.\n\n' +
-        'Also make sure Bluetooth is turned on in your system settings.';
+        'Make sure Bluetooth is turned on in your system settings.';
       _showStatus('Not supported — use Chrome or Edge.', 'error');
       alert(msg);
       return false;
     }
+
+    let deviceSelected = false;
     try {
-      _showStatus('Scanning for cube…', 'info');
+      _showStatus('Scanning… (select your cube in the popup)', 'info');
+
+      // Request with broad filters so any cube shows up
       device = await navigator.bluetooth.requestDevice({
-        filters: [
-          { namePrefix: 'GAN' },
-          { namePrefix: 'Giiker' },
-          { namePrefix: 'MHC' },
-          { services: [GAN_SERVICE] },
-          { services: [GIIKER_SERVICE] },
-        ],
+        acceptAllDevices: true,
         optionalServices: [GAN_SERVICE, GIIKER_SERVICE],
       });
+      deviceSelected = true;
 
       device.addEventListener('gattserverdisconnected', _onDisconnect);
       _showStatus(`Connecting to ${device.name}…`, 'info');
-      server = await device.gatt.connect();
 
-      // Detect cube type by name
-      const name = (device.name || '').toLowerCase();
-      if (name.includes('gan'))    { cubeType = 'gan';    await _initGAN(); }
-      else if (name.includes('giiker')) { cubeType = 'giiker'; await _initGiiker(); }
-      else {
-        // Try GAN first, fall back to Giiker
-        try { await _initGAN(); cubeType = 'gan'; }
-        catch { await _initGiiker(); cubeType = 'giiker'; }
+      server = await device.gatt.connect();
+      _showStatus(`Identifying ${device.name}…`, 'info');
+
+      // Detect protocol by service availability (don't rely on name)
+      const cubeName = (device.name || '').toLowerCase();
+      let initOk = false;
+
+      // Try GAN first
+      try {
+        await _initGAN();
+        cubeType = 'gan';
+        initOk = true;
+      } catch {
+        // Not GAN, try Giiker
+        try {
+          await _initGiiker();
+          cubeType = 'giiker';
+          initOk = true;
+        } catch {
+          // Neither matched
+        }
+      }
+
+      if (!initOk) {
+        _showStatus(`Connected to ${device.name} but protocol not recognised.\nOnly GAN and Giiker cubes are supported right now.`, 'error');
+        device.gatt.disconnect();
+        return false;
       }
 
       connected = true;
       moveLog   = [];
-      _showStatus(`Connected: ${device.name}`, 'connected');
+
+      // Show move label
+      const ml = document.getElementById('sc-move-label');
+      if (ml) ml.style.display = 'block';
+
+      _showStatus(`Connected: ${device.name} (${cubeType.toUpperCase()})`, 'connected');
       _updateUI(true);
       return true;
+
     } catch (err) {
-      if (err.name === 'NotFoundError') {
+      if (err.name === 'NotFoundError' && !deviceSelected) {
         _showStatus('No cube selected.', 'idle');
+      } else if (err.name === 'SecurityError') {
+        _showStatus('Permission denied. Try again.', 'error');
+      } else if (err.name === 'NetworkError' || err.message?.includes('GATT')) {
+        _showStatus('GATT connection failed. Make sure the cube is awake and close by.', 'error');
       } else {
         _showStatus('Connection failed: ' + err.message, 'error');
         console.error('SmartCube connect error:', err);
       }
+      device = null;
       return false;
     }
   }

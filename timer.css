@@ -486,3 +486,130 @@
   #scramble-display { font-size: 11px; }
   #timer-hint { font-size: 9px; }
 }
+
+/* ═══ Scramble event label (shown above scramble when setting enabled) ══════ */
+#scramble-event-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text3);
+  padding: 2px 0 4px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* ═══ Scramble alignment (controlled via inline style by Settings.applyScrambleAlign) ══ */
+#scramble-wrap {
+  flex-wrap: wrap;
+}
+/* default: left-aligned text, button on right */
+#scramble-display { text-align: left; }
+
+/* ═══ Font options ══════════════════════════════════════════════════════════ */
+/* --font-timer is set via JS Settings.applyFont(); base.css defines the default */
+/* Rubik — clean round numerals */
+/* Outfit — geometric sans */
+/* Share Tech Mono — arcade/terminal */
+/* Roboto Mono — default */
+
+/* ═══ Virtual Cube Panel ════════════════════════════════════════════════════ */
+#vc-wrap {
+  flex-shrink: 0;
+  padding: 8px 16px 12px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+}
+#vc-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 10px;
+}
+.vc-last-move {
+  font-family: var(--font-timer);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 32px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity .05s;
+}
+.vc-last-move.flash { opacity: 1; animation: vc-fade .4s forwards; }
+@keyframes vc-fade { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
+.vc-solved {
+  background: var(--green); color: #000;
+  font-weight: 700; font-size: 11px;
+  padding: 2px 10px; border-radius: 10px;
+}
+.vc-hint { font-size: 9px; color: var(--text3); margin-left: auto; }
+
+#vc-faces {
+  display: grid;
+  grid-template-columns: repeat(4, 64px);
+  grid-template-rows: repeat(3, 64px);
+  gap: 3px;
+  width: fit-content;
+  margin: 0 auto;
+}
+.vc-face {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px;
+  position: relative;
+}
+.vc-face-label {
+  position: absolute;
+  top: 1px; left: 3px;
+  font-size: 7px;
+  font-weight: 700;
+  color: var(--text3);
+  z-index: 1;
+  line-height: 1;
+}
+.vc-stickers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  height: 100%;
+  padding-top: 10px;
+}
+.vc-sticker {
+  border-radius: 1px;
+  border: 1px solid rgba(0,0,0,.3);
+  min-height: 12px;
+}
+
+@media (max-width: 640px) {
+  #vc-faces { grid-template-columns: repeat(4, 52px); grid-template-rows: repeat(3, 52px); }
+}
+
+/* ═══ Manual time input ══════════════════════════════════════════════════════ */
+.manual-time-input {
+  font-family: var(--font-timer);
+  font-size: clamp(28px, 5vw, 52px);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--accent);
+  color: var(--text);
+  text-align: center;
+  outline: none;
+  width: 280px;
+  letter-spacing: .02em;
+  padding: 4px 8px;
+}
+.manual-time-input::placeholder { color: var(--text3); }
+.manual-time-input:focus { border-bottom-color: var(--green); }
+
+/* ═══ Settings range tweaks ══════════════════════════════════════════════════ */
+.settings-section h3 {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--accent);
+  margin: 0 0 8px;
+}
