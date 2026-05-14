@@ -19,6 +19,11 @@ const TimeAttack = (() => {
   // ── Init ──────────────────────────────────────────────────────────────────
   function init() {
     goals = _loadGoals();
+    // Pre-render after delay
+    setTimeout(() => {
+      const el = document.getElementById('ta-content');
+      if (el) { try { render(); } catch(e) {} }
+    }, 400);
   }
 
   function show() {
@@ -38,11 +43,17 @@ const TimeAttack = (() => {
   // ── Render main ───────────────────────────────────────────────────────────
   function render() {
     const el = document.getElementById('ta-content');
-    if (!el) return;
+    if (!el) { setTimeout(show, 200); return; }
 
-    const sessionId = Storage.getCurrentSessionId();
-    const times     = Storage.getEffectiveTimes(sessionId).filter(t => t > 0);
-    const meta      = Storage.getCurrentSession();
+    let sessionId, times, meta;
+    try {
+      sessionId = Storage.getCurrentSessionId();
+      times     = (Storage.getEffectiveTimes ? Storage.getEffectiveTimes(sessionId) : []).filter(t => t > 0);
+      meta      = Storage.getCurrentSession();
+    } catch(e) {
+      el.innerHTML = '<div style="padding:20px;color:var(--text3);font-size:12px">Loading session data… <button class="btn-sm" onclick="TimeAttack.show()">Retry</button></div>';
+      return;
+    }
 
     el.innerHTML = `
       <div class="ta-header">

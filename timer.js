@@ -86,9 +86,7 @@ const Timer = (() => {
     const el = document.getElementById('timer-hint');
     if (!el) return;
     const m = cfg.timerInput;
-    if (mode === 'updown') {
-      el.innerHTML = '<kbd>↑</kbd> inspection &nbsp;·&nbsp; <kbd>↓</kbd> start timer &nbsp;·&nbsp; <kbd>Esc</kbd> cancel';
-    } else if (mode === 'off') {
+    if (mode === 'off') {
       el.innerHTML = 'Hold <kbd>Space</kbd> to start &nbsp;·&nbsp; <kbd>Space</kbd> to stop &nbsp;·&nbsp; <kbd>Esc</kbd> cancel';
     } else {
       el.innerHTML = 'Tap <kbd>Space</kbd> → inspection &nbsp;·&nbsp; Hold <kbd>Space</kbd> → start timing &nbsp;·&nbsp; <kbd>Space</kbd> stop';
@@ -132,6 +130,10 @@ const Timer = (() => {
 
   function onKeyDown(e) {
     if (isTyping(e.target)) return;
+    // Only handle timer keys when the timer view is actually active
+    // (prevents space/ctrl from firing timer while in Alg Trainer, Time Attack, etc.)
+    const timerView = document.getElementById('view-timer');
+    if (timerView && !timerView.classList.contains('active')) return;
     refreshCfg();
     const s = Storage.getSettings();
     const mode = s.inspectionMode ?? (s.inspection ? 'always' : 'off');
@@ -160,6 +162,8 @@ const Timer = (() => {
 
   function onKeyUp(e) {
     if (isTyping(e.target)) return;
+    const timerView = document.getElementById('view-timer');
+    if (timerView && !timerView.classList.contains('active')) return;
     refreshCfg();
     const s = Storage.getSettings();
     const mode = s.inspectionMode ?? (s.inspection ? 'always' : 'off');
@@ -293,6 +297,15 @@ const Timer = (() => {
   // ─── Inspection ───────────────────────────────────────────────────────────
   function startInspection() {
     inspElapsed = 0; _inspPenalty = '';
+    const s = Storage.getSettings();
+    const iiMode = s.infiniteInspection || 'off';
+
+    // Infinite inspection modes (oneloooking, cross+1, free) — no countdown limit
+    if (iiMode !== 'off') {
+      _runInfiniteInspection(iiMode);
+      return;
+    }
+
     const limit = cfg.inspectionTime || 15;
     setInspDisplay(limit + 's');
 
@@ -309,6 +322,26 @@ const Timer = (() => {
       else              { setInspDisplay('DNF', false); }
       if (rem <= -2) { stopInspectionUI(); startTimer(true); }
     }, 1000);
+  }
+
+  // Infinite inspection mode — no limit, space moves to next scramble
+  let _iiStart = 0;
+  function _runInfiniteInspection(mode) {
+    _iiStart = performance.now();
+    const labels = {
+      onelook: 'Oneloooking — plan full solve',
+      crossp1: 'Plan Cross + 1',
+      free:    'Free inspection',
+    };
+    setInspDisplay(labels[mode] || 'Inspection…', false);
+    // Tick elapsed time
+    if (inspInterval) clearInterval(inspInterval);
+    inspInterval = setInterval(() => {
+      const elapsed = ((performance.now() - _iiStart) / 1000).toFixed(1);
+      setInspDisplay(`${labels[mode] || 'Inspection'} · ${elapsed}s`, false);
+    }, 100);
+    // Space will call handlePress() which enters HOLDING state from INSPECTING
+    // That's fine — it works the same as normal inspection
   }
 
   function stopInspectionUI() {
@@ -355,10 +388,11 @@ const Timer = (() => {
       return;
     }
 
-    // Final phase or no multi-phase
+    // Final phase — save total elapsed time (last phase timestamp = total time from start)
     const allPhases = phases.length ? [...phases, t] : null;
+    const totalTime = allPhases ? allPhases[allPhases.length - 1] : t; // last phase IS the total
     phases = [];
-    if (typeof App !== 'undefined') App.onSolveComplete(t, pen, allPhases);
+    if (typeof App !== 'undefined') App.onSolveComplete(totalTime, pen, allPhases);
   }
 
   function _showPhaseSplit(t, phaseNum) {

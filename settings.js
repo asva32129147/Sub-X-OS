@@ -78,9 +78,11 @@ const Settings = (() => {
         <div class="setting-row">
           <label>Input mode</label>
           <select id="s-input" class="s-select">
-            <option value="space"   ${(s.timerInput||'space')==='space'   ?'selected':''}>Keyboard (Space / both Ctrl)</option>
-            <option value="virtual" ${s.timerInput==='virtual'            ?'selected':''}>Virtual Cube (keyboard moves)</option>
-            <option value="manual"  ${s.timerInput==='manual'             ?'selected':''}>Manual entry (type time)</option>
+            <option value="space"    ${(s.timerInput||'space')==='space'   ?'selected':''}>Keyboard (Space / both Ctrl)</option>
+            <option value="stackmat" ${s.timerInput==='stackmat'           ?'selected':''}>Stackmat (3.5mm audio jack)</option>
+            <option value="bluetooth-timer" ${s.timerInput==='bluetooth-timer'?'selected':''}>GAN Halo Bluetooth Timer</option>
+            <option value="virtual"  ${s.timerInput==='virtual'            ?'selected':''}>Virtual Cube (keyboard moves)</option>
+            <option value="manual"   ${s.timerInput==='manual'             ?'selected':''}>Manual entry (type time)</option>
           </select>
         </div>
         <div class="setting-row">
@@ -102,7 +104,6 @@ const Settings = (() => {
           <select id="s-inspmode" class="s-select">
             <option value="always"     ${im==='always'    ?'selected':''}>Always</option>
             <option value="except-bld" ${im==='except-bld'?'selected':''}>Except BLD/FMC</option>
-            <option value="updown"     ${im==='updown'    ?'selected':''}>Up/Down arrows (csTimer style)</option>
             <option value="off"        ${im==='off'       ?'selected':''}>Off</option>
           </select>
         </div>
@@ -125,6 +126,15 @@ const Settings = (() => {
         <div class="setting-row">
           <label>Show +2 / DNF penalty</label>
           <input id="s-insppenalty" type="checkbox" ${s.inspectionPenalty!==false?'checked':''}>
+        </div>
+        <div class="setting-row">
+          <label>Inspection training mode</label>
+          <select id="s-infinsp" class="s-select">
+            <option value="off"     ${(s.infiniteInspection||'off')==='off'    ?'selected':''}>Off — normal timed inspection</option>
+            <option value="onelook" ${s.infiniteInspection==='onelook'         ?'selected':''}>Oneloooking — unlimited, plan full solve</option>
+            <option value="crossp1" ${s.infiniteInspection==='crossp1'         ?'selected':''}>Cross + 1 planning</option>
+            <option value="free"    ${s.infiniteInspection==='free'            ?'selected':''}>Free — plan anything, no time limit</option>
+          </select>
         </div>
       </section>
 
@@ -164,6 +174,7 @@ const Settings = (() => {
             <option value="auto"          ${(s.timeFormat||'auto')==='auto'         ?'selected':''}>Auto (MM:SS when &gt;1min)</option>
             <option value="always_minutes"${s.timeFormat==='always_minutes'         ?'selected':''}>Always show minutes</option>
             <option value="centiseconds"  ${s.timeFormat==='centiseconds'           ?'selected':''}>Centiseconds always</option>
+            <option value="milliseconds"  ${s.timeFormat==='milliseconds'           ?'selected':''}>Milliseconds (0.001s)</option>
           </select>
         </div>
         <div class="setting-row">
@@ -269,6 +280,7 @@ const Settings = (() => {
     if (it) s.inspectionTime = parseInt(it);
     const iv = chk('s-inspvoice');   if (iv !== undefined) s.inspectionVoice  = iv;
     const ip = chk('s-insppenalty'); if (ip !== undefined) s.inspectionPenalty = ip;
+    const ii = sel('s-infinsp');     if (ii) s.infiniteInspection = ii;
 
     // Display
     const th = sel('s-theme');     if (th) { s.theme = th; applyTheme(th); }

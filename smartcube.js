@@ -22,9 +22,17 @@ const SmartCube = (() => {
   let cubeState = null;
 
   // ── GAN Service UUIDs ──────────────────────────────────────────────────────
+  // GAN old protocol (356i, 354M, etc.)
   const GAN_SERVICE    = '0000fff0-0000-1000-8000-00805f9b34fb';
   const GAN_CHAR_READ  = '0000fff5-0000-1000-8000-00805f9b34fb';
   const GAN_CHAR_WRITE = '0000fff6-0000-1000-8000-00805f9b34fb';
+  // GAN new protocol (i3, i4, i Carry S, 12 ui — uses Nordic UART style)
+  const GAN_SERVICE_NEW  = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+  const GAN_CHAR_NEW_RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+  const GAN_CHAR_NEW_TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+  // GAN Smart Timer BLE (Halo timer)
+  const GAN_TIMER_SVC    = '0000aaaa-0000-1000-8000-00805f9b34fb';
+  const GAN_TIMER_CHAR   = '0000bbbb-0000-1000-8000-00805f9b34fb';
 
   // ── Giiker Service UUIDs ───────────────────────────────────────────────────
   const GIIKER_SERVICE  = '0000aadb-0000-1000-8000-00805f9b34fb';
@@ -56,10 +64,24 @@ const SmartCube = (() => {
     try {
       _showStatus('Scanning… (select your cube in the popup)', 'info');
 
-      // Request with broad filters so any cube shows up
+      // Use name-prefix filters to show only cubing devices (like csTimer)
       device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [GAN_SERVICE, GIIKER_SERVICE],
+        filters: [
+          { namePrefix: 'GAN' },
+          { namePrefix: 'Gan' },
+          { namePrefix: 'MG' },       // MoYu MGC
+          { namePrefix: 'Giiker' },
+          { namePrefix: 'QY' },       // QiYi cubes
+          { namePrefix: 'MHC' },      // MoYu HRS
+          { namePrefix: 'GoCube' },
+          { namePrefix: 'Rubiks' },
+        ],
+        optionalServices: [
+          GAN_SERVICE,
+          GAN_SERVICE_NEW,
+          GAN_TIMER_SVC,
+          GIIKER_SERVICE,
+        ],
       });
       deviceSelected = true;
 
@@ -73,19 +95,26 @@ const SmartCube = (() => {
       const cubeName = (device.name || '').toLowerCase();
       let initOk = false;
 
-      // Try GAN first
+      // Try GAN new protocol first (i3, i4, newer cubes)
       try {
-        await _initGAN();
-        cubeType = 'gan';
+        await _initGANNew();
+        cubeType = 'gan-new';
         initOk = true;
       } catch {
-        // Not GAN, try Giiker
+        // Try old GAN protocol (356i, older)
         try {
-          await _initGiiker();
-          cubeType = 'giiker';
+          await _initGAN();
+          cubeType = 'gan';
           initOk = true;
         } catch {
-          // Neither matched
+          // Try Giiker
+          try {
+            await _initGiiker();
+            cubeType = 'giiker';
+            initOk = true;
+          } catch {
+            // No protocol matched
+          }
         }
       }
 
@@ -156,6 +185,31 @@ const SmartCube = (() => {
   }
 
   // ── Giiker init ───────────────────────────────────────────────────────────
+  async function _initGANNew() {
+    // GAN i3/i4/Carry S/12 ui — Nordic UART-style protocol
+    const svc  = await server.getPrimaryService(GAN_SERVICE_NEW);
+    const tx   = await svc.getCharacteristic(GAN_CHAR_NEW_TX);
+    await tx.startNotifications();
+    tx.addEventListener('characteristicvaluechanged', _onGANNewData);
+    // Request cube state
+    const rx = await svc.getCharacteristic(GAN_CHAR_NEW_RX);
+    await rx.writeValue(new Uint8Array([0x01, 0x01]));
+  }
+
+  function _onGANNewData(e) {
+    const data = new Uint8Array(e.target.value.buffer);
+    // New GAN protocol: byte 0 = command type
+    // 0x02 = move event, data[1] = face+direction
+    if (data[0] === 0x02 && data.length >= 2) {
+      const moveIdx = data[1];
+      if (moveIdx < GAN_MOVES.length) {
+        _recordMove(GAN_MOVES[moveIdx]);
+      }
+    }
+    // 0x04 = state sync (full cube state)
+    // For now just record moves — state reconstruction can be added later
+  }
+
   async function _initGiiker() {
     const svc  = await server.getPrimaryService(GIIKER_SERVICE);
     const char = await svc.getCharacteristic(GIIKER_CHAR);
@@ -178,6 +232,8 @@ const SmartCube = (() => {
   }
 
   // ── Move recording ────────────────────────────────────────────────────────
+  let _tpsRaf = null;
+
   function _recordMove(move) {
     const now = performance.now();
     const entry = { move, time: Math.round(now - (solveStart || now)), ts: Date.now() };
@@ -193,7 +249,33 @@ const SmartCube = (() => {
       el.scrollTop = el.scrollHeight;
     }
 
+    _updateTPS();
     if (typeof onMoveCallback === 'function') onMoveCallback(move, moveLog);
+  }
+
+  // ── TPS (Turns Per Second) ────────────────────────────────────────────────
+  function _updateTPS() {
+    const el = document.getElementById('sc-tps');
+    if (!el || !moveLog.length) return;
+
+    const now = performance.now();
+    // TPS over last 3 seconds (rolling window)
+    const window3s = moveLog.filter(m => now - (solveStart + m.time) < 3000);
+    const tps3 = window3s.length / 3;
+
+    // TPS over full solve
+    const elapsed = solving ? (now - solveStart) / 1000 : (moveLog.length ? moveLog[moveLog.length-1].time / 1000 : 1);
+    const tpsTotal = moveLog.length / Math.max(elapsed, 0.1);
+
+    el.innerHTML = `
+      <span class="sc-tps-val">${tps3.toFixed(1)}</span>
+      <span class="sc-tps-label">TPS (3s)</span>
+      <span class="sc-tps-sep">·</span>
+      <span class="sc-tps-val">${tpsTotal.toFixed(1)}</span>
+      <span class="sc-tps-label">TPS (avg)</span>
+      <span class="sc-tps-sep">·</span>
+      <span class="sc-tps-val">${moveLog.length}</span>
+      <span class="sc-tps-label">moves</span>`;
   }
 
   // ── Solve tracking ────────────────────────────────────────────────────────

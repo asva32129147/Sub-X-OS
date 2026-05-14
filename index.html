@@ -12,11 +12,11 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>">
 
-  <link rel="stylesheet" href="base.css?v=17">
-  <link rel="stylesheet" href="timer.css?v=17">
-  <link rel="stylesheet" href="panels.css?v=17">
-  <link rel="stylesheet" href="modals.css?v=17">
-  <link rel="stylesheet" href="alg-trainer.css?v=17">
+  <link rel="stylesheet" href="base.css?v=18">
+  <link rel="stylesheet" href="timer.css?v=18">
+  <link rel="stylesheet" href="panels.css?v=18">
+  <link rel="stylesheet" href="modals.css?v=18">
+  <link rel="stylesheet" href="alg-trainer.css?v=18">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600&family=Rubik:wght@300;400;600&family=Outfit:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -280,6 +280,8 @@
           <div id="gyro-cal-thumb"></div>
         </div>
       </div>
+      <!-- TPS display -->
+      <div id="sc-tps" class="sc-tps"></div>
       <!-- Live move display -->
       <div class="sc-section-label" id="sc-move-label" style="display:none">Live Moves</div>
       <div id="smartcube-moves" class="sc-moves"></div>
@@ -332,25 +334,25 @@
      app.js      → everything (loaded last)
 ══════════════════════════════════════════════════════════════════════════════ -->
 <!-- Supabase CDN removed — add back when setting up cloud sync -->
-<script src="utils.js?v=17"></script>
-<script src="storage.js?v=17"></script>
-<script src="scramble.js?v=17"></script>
-<script src="timer.js?v=17"></script>
-<script src="sessions.js?v=17"></script>
-<script src="stats.js?v=17"></script>
-<script src="settings.js?v=17"></script>
-<script src="alg-data.js?v=17"></script>
-<script src="alg-trainer.js?v=17"></script>
-<script src="solve-summary.js?v=17"></script>
-<script src="smartcube.js?v=17"></script>
-<script src="gyro.js?v=17"></script>
-<script src="session-manager.js?v=17"></script>
-<script src="universal-import.js?v=17"></script>
-<script src="time-attack.js?v=17"></script>
-<script src="virtual-cube.js?v=17"></script>
-<script src="cloud-sync.js?v=17"></script>
-<script src="auth-ui.js?v=17"></script>
-<script src="app.js?v=17"></script>
+<script src="utils.js?v=18"></script>
+<script src="storage.js?v=18"></script>
+<script src="scramble.js?v=18"></script>
+<script src="timer.js?v=18"></script>
+<script src="sessions.js?v=18"></script>
+<script src="stats.js?v=18"></script>
+<script src="settings.js?v=18"></script>
+<script src="alg-data.js?v=18"></script>
+<script src="alg-trainer.js?v=18"></script>
+<script src="solve-summary.js?v=18"></script>
+<script src="smartcube.js?v=18"></script>
+<script src="gyro.js?v=18"></script>
+<script src="session-manager.js?v=18"></script>
+<script src="universal-import.js?v=18"></script>
+<script src="time-attack.js?v=18"></script>
+<script src="virtual-cube.js?v=18"></script>
+<script src="cloud-sync.js?v=18"></script>
+<script src="auth-ui.js?v=18"></script>
+<script src="app.js?v=18"></script>
 
 <script>
 // ── View switching ────────────────────────────────────────────────────────────
@@ -440,6 +442,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────────────
+// Retry alg trainer and time attack render until they have content
+function _retryPanels() {
+  // Alg Trainer
+  const tc = document.getElementById('trainer-content');
+  if (tc && tc.children.length === 0 && typeof AlgTrainer !== 'undefined') {
+    try { AlgTrainer.show(); } catch(e) { console.error('AlgTrainer retry:', e); }
+  }
+  // Time Attack
+  const ta = document.getElementById('ta-content');
+  if (ta && ta.children.length === 0 && typeof TimeAttack !== 'undefined') {
+    try { TimeAttack.show(); } catch(e) { console.error('TimeAttack retry:', e); }
+  }
+}
+window.addEventListener('load', () => {
+  setTimeout(_retryPanels, 500);
+  setTimeout(_retryPanels, 1500);
+  setTimeout(_retryPanels, 3000);
+});
+
 // Belt-and-suspenders: fire nextScramble on DOMContentLoaded, load, AND after 500ms
 // Ensures scramble shows even if something in init chain is slow
 function _ensureScramble() {

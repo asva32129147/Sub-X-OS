@@ -502,3 +502,48 @@
 #sync-indicator[data-status="error"]   { color: var(--red); }
 #sync-indicator[data-status="offline"] { color: var(--text3); }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══ Settings range slider ═══════════════════════════════════════════════════ */
+.s-range {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border2);
+  outline: none;
+  cursor: pointer;
+}
+.s-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+.s-range::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+}
+
+/* ═══ TPS Display ════════════════════════════════════════════════════════════ */
+.sc-tps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  font-size: 11px;
+  flex-wrap: wrap;
+  min-height: 24px;
+}
+.sc-tps-val {
+  font-family: var(--font-timer);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.sc-tps-label { font-size: 9px; color: var(--text3); letter-spacing: .05em; }
+.sc-tps-sep   { color: var(--border2); }

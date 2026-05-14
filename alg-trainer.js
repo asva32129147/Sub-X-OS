@@ -26,23 +26,31 @@ const AlgTrainer = (() => {
   // ── Init ─────────────────────────────────────────────────────────────────
   function init() {
     _initSTT();
-    // Don't render on init - the view is hidden. Render on first show() instead.
-    // This avoids the case where trainer-content is inside a hidden .view and
-    // some browsers optimise away hidden DOM measurements.
+    // Pre-render set picker after short delay so it's ready when user clicks the tab
+    setTimeout(() => {
+      const el = document.getElementById('trainer-content');
+      if (el && !activeSet) {
+        try { renderSetPicker(); } catch(e) { console.error('AlgTrainer init pre-render:', e); }
+      }
+    }, 300);
   }
   function show() {
     const el = document.getElementById('trainer-content');
-    if (!el) return;
+    if (!el) {
+      setTimeout(show, 100);
+      return;
+    }
     if (!activeSet) {
       try {
         renderSetPicker();
       } catch(e) {
         console.error('AlgTrainer.show error:', e);
-        el.innerHTML = `<div style="padding:20px;color:var(--red);font-size:12px">
-          Trainer failed to load: ${e.message}<br>
-          <button class="btn-sm" style="margin-top:8px" onclick="AlgTrainer.show()">Retry</button>
-        </div>`;
+        el.innerHTML = '<div style="padding:20px;color:var(--red);font-size:12px">' +
+          'Trainer failed to load: ' + e.message +
+          '<br><button class="btn-sm" style="margin-top:8px" onclick="AlgTrainer.show()">Retry</button></div>';
       }
+    } else {
+      // Active set — trainer UI already shown, do nothing
     }
   }
   function hide() { _stopSTT(); _stopTick(); }
