@@ -12,11 +12,11 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>">
 
-  <link rel="stylesheet" href="base.css?v=18">
-  <link rel="stylesheet" href="timer.css?v=18">
-  <link rel="stylesheet" href="panels.css?v=18">
-  <link rel="stylesheet" href="modals.css?v=18">
-  <link rel="stylesheet" href="alg-trainer.css?v=18">
+  <link rel="stylesheet" href="base.css?v=19">
+  <link rel="stylesheet" href="timer.css?v=19">
+  <link rel="stylesheet" href="panels.css?v=19">
+  <link rel="stylesheet" href="modals.css?v=19">
+  <link rel="stylesheet" href="alg-trainer.css?v=19">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600&family=Rubik:wght@300;400;600&family=Outfit:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -70,7 +70,6 @@
       <button class="sb-ctrl" onclick="SessionManager.open()">Sessions</button>
       <button class="sb-ctrl" onclick="UniversalImport.open()">Import Data</button>
       <button class="sb-ctrl" onclick="showView('timeattack',this)">Time Attack</button>
-      <button class="sb-ctrl" id="btn-smartcube" onclick="document.getElementById('smartcube-overlay').classList.toggle('open')">Smart Cube</button>
       <button class="sb-ctrl" id="btn-account" onclick="AuthUI.open()">Sign In</button>
       <button class="sb-ctrl" id="btn-settings" onclick="Settings.open()">Settings</button>
     </div>
@@ -99,8 +98,25 @@
       <div id="scramble-wrap" role="region" aria-label="Scramble">
         <div id="scramble-event-label" style="display:none"></div>
         <div id="scramble-display" aria-live="polite">Generating...</div>
+        <!-- Draw scramble buttons -->
+        <div id="scramble-view-btns">
+          <button class="scr-view-btn" id="btn-draw-scr" onclick="ScrambleDraw.toggle()" title="Draw scramble (2D net)">&#9638;</button>
+          <button class="scr-view-btn" id="btn-3d-scr" onclick="ScrambleDraw.toggle3D()" title="3D view">&#9679;</button>
+        </div>
         <button class="scr-btn" onclick="App.nextScramble()"
                 title="New scramble (N)" aria-label="New scramble">↺</button>
+      </div>
+
+      <!-- Scramble draw panel: 2D net or 3D view -->
+      <div id="scramble-draw-panel" style="display:none">
+        <twisty-player id="scramble-twisty"
+          puzzle="3x3x3"
+          alg=""
+          hint-facelets="none"
+          control-panel="none"
+          visualization="2D"
+          style="width:100%;max-width:320px;height:180px;margin:0 auto;display:block">
+        </twisty-player>
       </div>
 
       <!-- PB flash badge -->
@@ -334,25 +350,28 @@
      app.js      → everything (loaded last)
 ══════════════════════════════════════════════════════════════════════════════ -->
 <!-- Supabase CDN removed — add back when setting up cloud sync -->
-<script src="utils.js?v=18"></script>
-<script src="storage.js?v=18"></script>
-<script src="scramble.js?v=18"></script>
-<script src="timer.js?v=18"></script>
-<script src="sessions.js?v=18"></script>
-<script src="stats.js?v=18"></script>
-<script src="settings.js?v=18"></script>
-<script src="alg-data.js?v=18"></script>
-<script src="alg-trainer.js?v=18"></script>
-<script src="solve-summary.js?v=18"></script>
-<script src="smartcube.js?v=18"></script>
-<script src="gyro.js?v=18"></script>
-<script src="session-manager.js?v=18"></script>
-<script src="universal-import.js?v=18"></script>
-<script src="time-attack.js?v=18"></script>
-<script src="virtual-cube.js?v=18"></script>
-<script src="cloud-sync.js?v=18"></script>
-<script src="auth-ui.js?v=18"></script>
-<script src="app.js?v=18"></script>
+<!-- cubing.js twisty-player: 3D cube renders (same as cubing.net) -->
+<script src="https://cdn.cubing.net/js/cubing/twisty" type="module" defer></script>
+<script src="utils.js?v=19"></script>
+<script src="storage.js?v=19"></script>
+<script src="scramble.js?v=19"></script>
+<script src="timer.js?v=19"></script>
+<script src="sessions.js?v=19"></script>
+<script src="stats.js?v=19"></script>
+<script src="settings.js?v=19"></script>
+<script src="alg-data.js?v=19"></script>
+<script src="alg-trainer.js?v=19"></script>
+<script src="solve-summary.js?v=19"></script>
+<script src="smartcube.js?v=19"></script>
+<script src="gyro.js?v=19"></script>
+<script src="session-manager.js?v=19"></script>
+<script src="universal-import.js?v=19"></script>
+<script src="time-attack.js?v=19"></script>
+<script src="virtual-cube.js?v=19"></script>
+<script src="scramble-draw.js?v=19"></script>
+<script src="cloud-sync.js?v=19"></script>
+<script src="auth-ui.js?v=19"></script>
+<script src="app.js?v=19"></script>
 
 <script>
 // ── View switching ────────────────────────────────────────────────────────────

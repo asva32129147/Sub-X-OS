@@ -18,6 +18,7 @@ const App = (() => {
     Gyro.init();
     TimeAttack.init();
     VirtualCube.init();
+    if (typeof ScrambleDraw !== 'undefined') ScrambleDraw.init();
     // CloudSync and AuthUI wait for deferred Supabase SDK
     window.addEventListener('load', () => {
       if (typeof CloudSync !== 'undefined') CloudSync.init();
@@ -77,6 +78,10 @@ const App = (() => {
     const s2 = Storage.getSettings();
     if (s2.timerInput === 'virtual' && typeof VirtualCube !== 'undefined') {
       VirtualCube.applyScramble(currentScramble);
+    }
+    // Update draw scramble (2D/3D panel)
+    if (typeof ScrambleDraw !== 'undefined') {
+      ScrambleDraw.update(currentScramble, _eventToPuzzle(currentEvent));
     }
     if (currentScramble.includes('\n')) {
       el.innerHTML = currentScramble.split('\n')
@@ -160,6 +165,14 @@ const App = (() => {
         .then(() => console.log('SW registered'))
         .catch(e => console.warn('SW failed:', e));
     }
+  }
+
+  function _eventToPuzzle(ev) {
+    var map = { '222':'2x2x2','333':'3x3x3','444':'4x4x4','555':'5x5x5',
+                '666':'6x6x6','777':'7x7x7','pyram':'pyraminx','skewb':'skewb',
+                'sq1':'square1','minx':'megaminx','clock':'clock',
+                '333oh':'3x3x3','333bf':'3x3x3','333fm':'3x3x3' };
+    return map[ev] || '3x3x3';
   }
 
   document.addEventListener('DOMContentLoaded', () => { init(); registerSW(); });

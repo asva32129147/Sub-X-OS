@@ -1,5 +1,5 @@
-// sw.js — Sub-X OS service worker — VERSION: v18
-const CACHE = 'subx-v18';
+// sw.js — Sub-X OS service worker — VERSION: v19
+const CACHE = 'subx-v19';
 
 const ASSETS = [
   './', './index.html', './trainer.html', './manifest.json',
@@ -10,6 +10,9 @@ const ASSETS = [
   './solve-summary.js', './smartcube.js', './gyro.js',
   './session-manager.js', './universal-import.js',
   './time-attack.js', './cloud-sync.js', './auth-ui.js',
+  './virtual-cube.js',
+  './scramble-draw.js',
+  './stackmat.js',
   './app.js',
 ];
 

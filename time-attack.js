@@ -1,173 +1,312 @@
-// time-attack.js — Time Attack Tracker (clean rewrite)
+// time-attack.js — Algorithm Time Attack
+// Run ALL algorithms in a set consecutively without stopping.
+// Timer runs the whole time. Space/tap marks each algorithm done (records split).
+// Tracks total time, per-alg splits, personal bests, and run history.
+// Exposes window.TimeAttack
 'use strict';
 
-(function() {
-  var goals = [];
+(function () {
 
+  var sets       = {};
+  var activeKey  = '';
+  var activeSet  = null;
+  var order      = [];      // custom order: array of case indices
+  var runIdx     = 0;       // which alg we're currently on
+  var splits     = [];      // [ms, ms, ...] one per alg, elapsed from run start
+  var totalStart = 0;       // performance.now() when run started
+  var running    = false;
+  var rafId      = null;
+  var history    = {};      // { setKey: [ {splits:[...], total:ms, date:timestamp}, ... ] }
+
+  // ── Init ────────────────────────────────────────────────────────────────────
   function init() {
-    goals = _load();
+    _loadHistory();
+    document.addEventListener('keydown', function (e) {
+      var view = document.getElementById('view-timeattack');
+      if (!view || !view.classList.contains('active')) return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.code === 'Space')  { e.preventDefault(); markAlg(); }
+      if (e.code === 'Escape') { cancelRun(); }
+    });
   }
 
+  // ── show ────────────────────────────────────────────────────────────────────
   function show() {
     var el = document.getElementById('ta-content');
     if (!el) return;
-    try { render(); } catch(e) {
-      el.innerHTML = '<div style="padding:20px;color:var(--red)">Error: ' + e.message + ' <button class="btn-sm" onclick="window.TimeAttack.show()">Retry</button></div>';
-    }
+    try { sets = typeof getAllSets === 'function' ? getAllSets() : {}; } catch (e) { sets = {}; }
+    if (!activeSet || !running) { renderSetPicker(el); }
   }
 
-  function render() {
-    var el = document.getElementById('ta-content');
-    if (!el) return;
-
-    var sessionId = Storage.getCurrentSessionId();
-    var solves    = Storage.getSolves(sessionId) || [];
-    var times     = solves.map(function(s) {
-      if (s.penalty === 'DNF') return -1;
-      return s.penalty === '+2' ? s.time + 200 : s.time;
-    }).filter(function(t) { return t > 0; });
-    var meta = Storage.getCurrentSession();
-
+  // ── Set picker ──────────────────────────────────────────────────────────────
+  function renderSetPicker(el) {
     var html = '<div class="ta-header">'
-      + '<span class="ta-title">Time Attack</span>'
-      + '<span class="ta-session">' + (meta ? meta.name : 'Session') + ' &middot; ' + times.length + ' solves</span>'
-      + '</div>';
+      + '<span class="ta-title">Algorithm Time Attack</span>'
+      + '<div class="ta-subtitle">Run every algorithm in a set consecutively. '
+      + 'Space marks each one done. Timer runs the whole time.</div></div>'
+      + '<div class="ta-set-list">';
 
-    if (!times.length) {
-      html += '<div class="ta-empty">Do some solves first, then set a goal below.</div>';
-    }
+    Object.keys(sets).forEach(function (key) {
+      var s = sets[key];
+      if (!s.cases || !s.cases.length) return;
+      var runs  = history[key] || [];
+      var pb    = runs.length ? Math.min.apply(null, runs.map(function (r) { return r.total; })) : null;
+      html += '<div class="ta-set-card" onclick="window.TimeAttack.selectSet(\'' + key + '\')">'
+        + '<div class="ta-set-name">' + _esc(s.name || key) + '</div>'
+        + '<div class="ta-set-info">' + s.cases.length + ' algorithms'
+        + (pb ? ' &middot; PB: ' + _fmt(pb) : ' &middot; No runs yet')
+        + (runs.length ? ' &middot; ' + runs.length + ' runs' : '')
+        + '</div></div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  }
 
-    // Render goal cards
-    if (goals.length) {
-      html += '<div class="ta-goals">';
-      goals.forEach(function(g, idx) {
-        var res  = _evaluate(g, times);
-        var pct  = g.count > 0 ? Math.min(100, Math.round(res.current / g.count * 100)) : 0;
-        var done = res.current >= g.count;
-        var col  = done ? 'var(--green)' : pct >= 60 ? 'var(--accent)' : 'var(--text2)';
-        html += '<div class="ta-goal-card' + (done ? ' done' : '') + '">'
-          + '<div class="ta-goal-top"><div>'
-          + '<div class="ta-goal-name">' + _esc(g.label || ('Sub-' + g.target.toFixed(2) + 's')) + '</div>'
-          + '<div class="ta-goal-mode">' + _modeText(g) + '</div>'
-          + '</div>'
-          + '<div class="ta-goal-status" style="color:' + col + '">'
-          + (done ? '&#10003; DONE' : res.current + '/' + g.count) + '</div></div>'
-          + '<div class="ta-bar"><div class="ta-bar-fill" style="width:' + pct + '%;background:' + col + '"></div></div>'
-          + '<div class="ta-goal-detail">Best streak: ' + res.bestStreak
-          + ' &middot; ' + res.qualifying + ' qualify'
-          + (res.remaining > 0 ? ' &middot; Need ' + res.remaining + ' more' : '') + '</div>'
-          + '<button class="ta-del-btn" onclick="window.TimeAttack.removeGoal(' + idx + ')">&#10005;</button>'
-          + '</div>';
-      });
-      html += '</div>';
-    }
+  // ── Select set → show pre-run screen ───────────────────────────────────────
+  function selectSet(key) {
+    activeKey = key;
+    activeSet = sets[key];
+    order     = activeSet.cases.map(function (_, i) { return i; });
+    renderPreRun(document.getElementById('ta-content'));
+  }
 
-    // Add goal form
-    html += '<div class="ta-add-section"><div class="ta-add-title">Add Goal</div>'
-      + '<div class="ta-add-row">'
-      + '<div class="ta-field"><label>Target (sec)</label>'
-      + '<input type="number" id="ta-target" placeholder="13.50" step="0.01" min="0" class="ta-input" style="width:80px"></div>'
-      + '<div class="ta-field"><label>Mode</label>'
-      + '<select id="ta-mode" class="ta-select" onchange="window.TimeAttack.toggleWindow(this)">'
-      + '<option value="streak">Streak (Y in a row)</option>'
-      + '<option value="window">Window (Y of last Z)</option>'
-      + '<option value="session">Session (Y total)</option>'
-      + '</select></div>'
-      + '<div class="ta-field"><label>Goal (Y)</label>'
-      + '<input type="number" id="ta-count" placeholder="5" min="1" class="ta-input" style="width:70px"></div>'
-      + '<div class="ta-field" id="ta-win-wrap" style="display:none"><label>Window (Z)</label>'
-      + '<input type="number" id="ta-window" placeholder="12" min="1" class="ta-input" style="width:70px"></div>'
+  function renderPreRun(el) {
+    if (!el) return;
+    var runs = history[activeKey] || [];
+    var pb   = runs.length ? Math.min.apply(null, runs.map(function (r) { return r.total; })) : null;
+    var html = '<div class="ta-header">'
+      + '<button class="btn-sm" onclick="window.TimeAttack.exitRun()">&#8592; Sets</button>'
+      + '<span class="ta-title">' + _esc(activeSet.name) + ' Time Attack</span>'
       + '</div>'
-      + '<div style="display:flex;gap:6px;margin-top:8px">'
-      + '<input type="text" id="ta-label" placeholder="Name (optional)" class="ta-input" style="flex:1">'
-      + '<button class="btn-primary" onclick="window.TimeAttack.addGoal()">Add</button>'
-      + '</div></div>';
+      + '<div class="ta-prerun-info">'
+      + '<div class="ta-stat-big"><span>' + activeSet.cases.length + '</span><label>algorithms</label></div>'
+      + (pb ? '<div class="ta-stat-big"><span>' + _fmt(pb) + '</span><label>PB</label></div>' : '')
+      + (runs.length ? '<div class="ta-stat-big"><span>' + runs.length + '</span><label>runs</label></div>' : '')
+      + '</div>'
+      + '<div class="ta-alg-order"><div class="ta-order-label">Order</div>'
+      + '<div class="ta-order-chips">'
+      + order.map(function (i) {
+          return '<span class="ta-chip">' + _esc(activeSet.cases[i].id) + '</span>';
+        }).join('')
+      + '</div>'
+      + '<button class="btn-sm" style="margin-top:6px" onclick="window.TimeAttack.shuffleOrder()">Shuffle order</button>'
+      + '</div>'
+      + '<div class="ta-hint">Press <kbd>Space</kbd> or tap to start</div>'
+      + '<div class="ta-big-start" onclick="window.TimeAttack.startRun()">START</div>'
+      + _renderRunHistory()
+      + '</div>';
+    el.innerHTML = html;
+  }
 
-    // Sparkline
-    if (times.length > 1) {
-      html += '<div class="ta-history-section"><div class="ta-add-title">Last ' + Math.min(times.length, 50) + ' solves</div>'
-        + _sparkline(times, goals) + '</div>';
-    }
+  function _renderRunHistory() {
+    var runs = (history[activeKey] || []).slice(-5).reverse();
+    if (!runs.length) return '';
+    var html = '<div class="ta-hist-section"><div class="ta-order-label">Recent runs</div>';
+    runs.forEach(function (r, i) {
+      var date = new Date(r.date).toLocaleDateString();
+      html += '<div class="ta-hist-row">'
+        + '<span class="ta-hist-n">#' + (runs.length - i) + '</span>'
+        + '<span class="ta-hist-time">' + _fmt(r.total) + '</span>'
+        + '<span class="ta-hist-date">' + date + '</span>'
+        + '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  // ── Start run ───────────────────────────────────────────────────────────────
+  function startRun() {
+    running    = true;
+    runIdx     = 0;
+    splits     = [];
+    totalStart = performance.now();
+    renderRunView(document.getElementById('ta-content'));
+    _tick();
+  }
+
+  function renderRunView(el) {
+    if (!el) return;
+    var c = activeSet.cases[order[runIdx]];
+    var imgUrl = activeSet.imgFn ? activeSet.imgFn(c.alg) : (c.imageUrl || '');
+
+    var html = '<div class="ta-run-top">'
+      + '<span class="ta-run-pos">' + (runIdx + 1) + ' / ' + order.length + '</span>'
+      + '<span class="ta-run-timer" id="ta-total-timer">0.00</span>'
+      + '<button class="btn-sm" style="color:var(--red)" onclick="window.TimeAttack.cancelRun()">Cancel</button>'
+      + '</div>'
+      // Progress bar
+      + '<div class="ta-prog-bar"><div class="ta-prog-fill" id="ta-prog" style="width:' + Math.round(runIdx / order.length * 100) + '%"></div></div>'
+      // Current alg
+      + '<div class="ta-run-case">'
+      + (imgUrl ? '<img class="ta-case-img" src="' + imgUrl + '" alt="' + c.id + '" onerror="this.style.display=\'none\'">' : '')
+      + '<div class="ta-run-info">'
+      + '<div class="ta-case-id">' + _esc(c.id) + '</div>'
+      + (c.group ? '<div class="ta-case-group">' + _esc(c.group) + '</div>' : '')
+      + '<div class="ta-case-alg">' + _esc(c.alg || '') + '</div>'
+      + (c.auf   ? '<div class="ta-case-auf">AUF: ' + _esc(c.auf) + '</div>' : '')
+      + '</div></div>'
+      // Next alg preview
+      + (runIdx + 1 < order.length ? '<div class="ta-next-preview">Up next: <strong>'
+          + _esc(activeSet.cases[order[runIdx + 1]].id) + '</strong></div>' : '')
+      // Splits so far
+      + '<div class="ta-splits-live" id="ta-splits-live">' + _buildSplitsHTML() + '</div>'
+      // Tap area
+      + '<div class="ta-tap-hint">Space / tap when done &rarr; starts next alg</div>'
+      + '<div class="ta-big-tap" id="ta-tap-area" onclick="window.TimeAttack.markAlg()">'
+      + (runIdx === order.length - 1 ? 'FINISH' : 'NEXT') + '</div>';
 
     el.innerHTML = html;
   }
 
-  function toggleWindow(sel) {
-    var w = document.getElementById('ta-win-wrap');
-    if (w) w.style.display = sel.value === 'window' ? 'flex' : 'none';
-  }
-
-  function addGoal() {
-    var target = parseFloat(document.getElementById('ta-target').value);
-    var mode   = document.getElementById('ta-mode').value;
-    var count  = parseInt(document.getElementById('ta-count').value) || 5;
-    var win    = parseInt((document.getElementById('ta-window') || {}).value) || 12;
-    var label  = (document.getElementById('ta-label').value || '').trim();
-    if (!target || target <= 0) { alert('Enter a target time in seconds (e.g. 13.50).'); return; }
-    goals.push({ target:target, mode:mode, count:count, window:win, label:label });
-    _save(); render();
-  }
-
-  function removeGoal(idx) {
-    goals.splice(idx, 1);
-    _save(); render();
-  }
-
-  function _evaluate(g, times) {
-    var tgt = g.target * 100;
-    var q   = function(t) { return t > 0 && t <= tgt; };
-    var qualifying = 0, current = 0, bestStreak = 0, remaining = 0;
-
-    if (g.mode === 'streak') {
-      var run = 0;
-      for (var i = 0; i < times.length; i++) {
-        if (q(times[i])) { run++; if (run > bestStreak) bestStreak = run; qualifying++; }
-        else run = 0;
-      }
-      // Current = streak from the end
-      current = 0;
-      for (var j = times.length - 1; j >= 0; j--) {
-        if (q(times[j])) current++; else break;
-      }
-      remaining = Math.max(0, g.count - current);
-    } else if (g.mode === 'window') {
-      var w = times.slice(-(g.window || 12));
-      qualifying = times.filter(q).length;
-      current    = w.filter(q).length;
-      bestStreak = current;
-      remaining  = Math.max(0, g.count - current);
-    } else {
-      qualifying = current = times.filter(q).length;
-      bestStreak = current;
-      remaining  = Math.max(0, g.count - current);
-    }
-    return { current:current, bestStreak:bestStreak, qualifying:qualifying, remaining:remaining };
-  }
-
-  function _modeText(g) {
-    if (g.mode === 'streak')  return 'Streak: ' + g.count + ' in a row';
-    if (g.mode === 'window')  return 'Window: ' + g.count + ' of last ' + g.window;
-    return 'Session: ' + g.count + ' total';
-  }
-
-  function _sparkline(times, goals) {
-    var last = times.slice(-50);
-    var max  = Math.max.apply(null, last) || 1;
-    var html = '<div class="ta-spark"><div class="ta-spark-bars">';
-    last.forEach(function(t) {
-      var h   = Math.max(4, Math.min(40, Math.round(40 - (t / max) * 36)));
-      var col = (goals.length && t <= goals[0].target * 100) ? 'var(--green)' : 'var(--red)';
-      html += '<div class="ta-spark-bar" style="height:' + h + 'px;background:' + col + '"></div>';
+  function _buildSplitsHTML() {
+    if (!splits.length) return '';
+    var html = '<div class="ta-splits-header">Splits</div>';
+    splits.forEach(function (elapsed, i) {
+      var split = i === 0 ? elapsed : elapsed - splits[i - 1];
+      html += '<div class="ta-split-row">'
+        + '<span class="ta-split-id">' + _esc(activeSet.cases[order[i]].id) + '</span>'
+        + '<span class="ta-split-t">' + _fmt(split) + '</span>'
+        + '<span class="ta-split-cum">' + _fmt(elapsed) + '</span>'
+        + '</div>';
     });
-    html += '</div></div>';
     return html;
   }
 
+  // ── Mark algorithm done ─────────────────────────────────────────────────────
+  function markAlg() {
+    if (!running) { startRun(); return; }
+    var elapsed = Math.round(performance.now() - totalStart);
+    splits.push(elapsed);
+
+    if (runIdx >= order.length - 1) {
+      finishRun(elapsed);
+    } else {
+      runIdx++;
+      renderRunView(document.getElementById('ta-content'));
+    }
+  }
+
+  // ── Finish run ──────────────────────────────────────────────────────────────
+  function finishRun(total) {
+    running = false;
+    cancelAnimationFrame(rafId);
+
+    var run = { splits: splits.slice(), total: total, date: Date.now() };
+    if (!history[activeKey]) history[activeKey] = [];
+    history[activeKey].push(run);
+    if (history[activeKey].length > 50) history[activeKey] = history[activeKey].slice(-50);
+    _saveHistory();
+
+    renderResults(document.getElementById('ta-content'), run);
+  }
+
+  function renderResults(el, run) {
+    if (!el) return;
+    var allRuns = history[activeKey] || [];
+    var pb      = Math.min.apply(null, allRuns.map(function (r) { return r.total; }));
+    var isPB    = run.total === pb;
+
+    var html = '<div class="ta-header">'
+      + (isPB ? '<div class="ta-pb-badge">NEW PB!</div>' : '')
+      + '<span class="ta-title">' + _esc(activeSet.name) + ' Time Attack</span>'
+      + '</div>'
+      + '<div class="ta-result-total' + (isPB ? ' is-pb' : '') + '">'
+      + _fmt(run.total)
+      + '</div>'
+      + '<div class="ta-stats-row">'
+      + '<div class="ta-stat"><span>PB</span><strong>' + _fmt(pb) + '</strong></div>'
+      + '<div class="ta-stat"><span>Runs</span><strong>' + allRuns.length + '</strong></div>'
+      + '<div class="ta-stat"><span>Avg</span><strong>' + _fmt(Math.round(allRuns.reduce(function(a,r){return a+r.total;},0)/allRuns.length)) + '</strong></div>'
+      + '</div>'
+      // Per-alg splits
+      + '<div class="ta-splits-section"><div class="ta-order-label">Splits</div>'
+      + '<div class="ta-splits-table">';
+
+    run.splits.forEach(function (elapsed, i) {
+      var split = i === 0 ? elapsed : elapsed - run.splits[i - 1];
+      var c     = activeSet.cases[order[i]];
+      // Compare to PB splits if available
+      var pbRun = allRuns.reduce(function(best, r) { return r.total < (best ? best.total : Infinity) ? r : best; }, null);
+      var pbSplit = pbRun && pbRun.splits[i]
+        ? (i === 0 ? pbRun.splits[i] : pbRun.splits[i] - pbRun.splits[i-1]) : null;
+      var diff = pbSplit ? split - pbSplit : null;
+      html += '<div class="ta-split-row">'
+        + '<span class="ta-split-n">' + (i+1) + '</span>'
+        + '<span class="ta-split-id">' + _esc(c.id) + '</span>'
+        + '<span class="ta-split-t">' + _fmt(split) + '</span>'
+        + '<span class="ta-split-cum">' + _fmt(elapsed) + '</span>'
+        + (diff !== null ? '<span class="ta-split-diff ' + (diff <= 0 ? 'faster' : 'slower') + '">'
+            + (diff > 0 ? '+' : '') + _fmt(Math.abs(diff)) + '</span>' : '')
+        + '</div>';
+    });
+
+    html += '</div></div>'
+      + '<div class="ta-nav-btns">'
+      + '<button class="btn-primary" onclick="window.TimeAttack.startRun()">Run Again</button>'
+      + '<button class="btn-sm" onclick="window.TimeAttack.renderPreRun(document.getElementById(\'ta-content\'))">Change Order</button>'
+      + '<button class="btn-sm" onclick="window.TimeAttack.exitRun()">&#8592; Sets</button>'
+      + '</div>';
+    el.innerHTML = html;
+  }
+
+  // ── Cancel ──────────────────────────────────────────────────────────────────
+  function cancelRun() {
+    running = false;
+    cancelAnimationFrame(rafId);
+    renderPreRun(document.getElementById('ta-content'));
+  }
+
+  // ── Order ────────────────────────────────────────────────────────────────────
+  function shuffleOrder() {
+    for (var i = order.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = order[i]; order[i] = order[j]; order[j] = t;
+    }
+    renderPreRun(document.getElementById('ta-content'));
+  }
+
+  function exitRun() {
+    running   = false;
+    activeSet = null;
+    activeKey = '';
+    cancelAnimationFrame(rafId);
+    show();
+  }
+
+  // ── Tick ────────────────────────────────────────────────────────────────────
+  function _tick() {
+    if (!running) return;
+    var elapsed = Math.round(performance.now() - totalStart);
+    var el = document.getElementById('ta-total-timer');
+    if (el) el.textContent = _fmt(elapsed);
+    rafId = requestAnimationFrame(_tick);
+  }
+
+  // ── Persistence ──────────────────────────────────────────────────────────────
+  function _saveHistory() {
+    try { localStorage.setItem('subx_ta_history', JSON.stringify(history)); } catch(e) {}
+  }
+  function _loadHistory() {
+    try { history = JSON.parse(localStorage.getItem('subx_ta_history') || '{}'); }
+    catch(e) { history = {}; }
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function _fmt(ms) {
+    if (ms === null || ms === undefined || isNaN(ms)) return '—';
+    var s = ms / 1000;
+    if (s < 60) return s.toFixed(2) + 's';
+    return Math.floor(s / 60) + ':' + (s % 60).toFixed(2).padStart(5, '0');
+  }
   function _esc(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
-  function _load()  { try { return JSON.parse(localStorage.getItem('subx_ta_goals')||'[]'); } catch(e) { return []; } }
-  function _save()  { try { localStorage.setItem('subx_ta_goals', JSON.stringify(goals)); } catch(e) {} }
 
-  window.TimeAttack = { init:init, show:show, render:render, addGoal:addGoal, removeGoal:removeGoal, toggleWindow:toggleWindow };
+  window.TimeAttack = {
+    init: init, show: show,
+    selectSet: selectSet, exitRun: exitRun,
+    startRun: startRun, markAlg: markAlg, cancelRun: cancelRun,
+    shuffleOrder: shuffleOrder, renderPreRun: renderPreRun,
+  };
+
 })();

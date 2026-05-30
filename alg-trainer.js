@@ -162,7 +162,7 @@
       var savedNote = _getUserNote(c.id);
       html += '<div class="tr-learn-card">'
         + '<div class="tr-learn-top">'
-        + (imgUrl ? '<img src="' + imgUrl + '" class="tr-learn-img" alt="' + c.id + '" onerror="this.style.display=\'none\'">' : '')
+        + _twisty(c, activeSet, 'tr-learn-img-3d')
         + '<div class="tr-learn-info">'
         + '<div class="tr-learn-id">' + c.id + '</div>'
         + (c.group ? '<div class="tr-learn-group-tag">' + c.group + '</div>' : '')
@@ -282,25 +282,60 @@
   }
 
   function loadImage(c) {
-    var img = document.getElementById('tr-img');
-    var ph  = document.getElementById('tr-img-ph');
-    if (!img || !ph) return;
-    var url = c.imageUrl || (activeSet.imgFn ? activeSet.imgFn(c.alg) : '');
-    if (url) {
-      ph.textContent = 'Loading…'; ph.style.display = 'block'; img.style.display = 'none';
-      img.onload  = function() { img.style.display = 'block'; ph.style.display = 'none'; };
-      img.onerror = function() { ph.textContent = '(no image)'; };
-      img.src = url;
+    var box = document.getElementById('tr-img-box');
+    if (!box) return;
+    // Use twisty-player for 3D render; fall back to flat image
+    var puzzle = _eventToPuzzle(activeSet.event);
+    var alg    = c.alg || '';
+    var isPLL  = activeSet.name && activeSet.name.toUpperCase().indexOf('PLL') >= 0;
+
+    if (customElements.get('twisty-player')) {
+      // 3D render via cubing.js
+      box.innerHTML = _twisty3d(alg, puzzle, isPLL ? '2-side' : 'top', 148);
     } else {
-      img.style.display = 'none'; ph.textContent = 'No image'; ph.style.display = 'block';
+      // Fallback: VisualCube image
+      var url = c.imageUrl || (activeSet.imgFn ? activeSet.imgFn(c.alg) : '');
+      if (url) {
+        box.innerHTML = '<img src="' + url + '" style="width:148px;height:148px;object-fit:contain" onerror="this.parentElement.innerHTML='(no image)'">';
+      } else {
+        box.innerHTML = '<span style="font-size:10px;color:var(--text3)">No image</span>';
+      }
     }
-    // 2-side image for PLL drill
-    var img2 = document.getElementById('tr-img-2side');
-    if (img2 && activeSet.imgFn2 && c.alg) {
-      img2.style.display = 'none';
-      img2.onload = function() { img2.style.display = 'block'; };
-      img2.src = activeSet.imgFn2(c.alg);
+  }
+
+  function _twisty3d(alg, puzzle, view, size) {
+    puzzle = puzzle || '3x3x3';
+    size   = size || 150;
+    // view: 'top' = plan view, '2-side' = slightly rotated to show 2 faces
+    var cam = view === '2-side' ? '' : ' camera-latitude="90"';
+    return '<twisty-player'
+      + ' puzzle="' + puzzle + '"'
+      + ' alg="' + alg.replace(/"/g, '&quot;') + '"'
+      + ' hint-facelets="none"'
+      + ' control-panel="none"'
+      + cam
+      + ' style="width:' + size + 'px;height:' + size + 'px;display:block">'
+      + '</twisty-player>';
+  }
+
+  function _twisty(c, set, cls) {
+    var puzzle = _eventToPuzzle(set ? set.event : '333');
+    if (customElements.get('twisty-player')) {
+      return '<twisty-player puzzle="' + puzzle + '" alg="'
+        + (c.alg||'').replace(/"/g,'&quot;')
+        + '" hint-facelets="none" control-panel="none" camera-latitude="90"'
+        + ' class="' + (cls||'') + '" style="width:80px;height:80px;display:block"></twisty-player>';
     }
+    var url = c.imageUrl || (set && set.imgFn ? set.imgFn(c.alg) : '');
+    return url ? '<img src="' + url + '" class="tr-learn-img" onerror="this.style.display='none'">' : '';
+  }
+
+  function _eventToPuzzle(ev) {
+    var map = { '222':'2x2x2','333':'3x3x3','444':'4x4x4','555':'5x5x5',
+                '666':'6x6x6','777':'7x7x7','pyram':'pyraminx','skewb':'skewb',
+                'sq1':'square1','minx':'megaminx','clock':'clock',
+                '333oh':'3x3x3','333bf':'3x3x3','333fm':'3x3x3' };
+    return map[ev] || '3x3x3';
   }
 
   function buildOLLMCQ() {

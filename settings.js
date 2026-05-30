@@ -78,11 +78,11 @@ const Settings = (() => {
         <div class="setting-row">
           <label>Input mode</label>
           <select id="s-input" class="s-select">
-            <option value="space"    ${(s.timerInput||'space')==='space'   ?'selected':''}>Keyboard (Space / both Ctrl)</option>
-            <option value="stackmat" ${s.timerInput==='stackmat'           ?'selected':''}>Stackmat (3.5mm audio jack)</option>
-            <option value="bluetooth-timer" ${s.timerInput==='bluetooth-timer'?'selected':''}>GAN Halo Bluetooth Timer</option>
-            <option value="virtual"  ${s.timerInput==='virtual'            ?'selected':''}>Virtual Cube (keyboard moves)</option>
-            <option value="manual"   ${s.timerInput==='manual'             ?'selected':''}>Manual entry (type time)</option>
+            <option value="space"      ${(s.timerInput||'space')==='space'      ?'selected':''}>Keyboard (Space / both Ctrl)</option>
+            <option value="stackmat"   ${s.timerInput==='stackmat'              ?'selected':''}>Stackmat (3.5mm audio jack)</option>
+            <option value="smartcube"  ${s.timerInput==='smartcube'             ?'selected':''}>Smart Cube (Bluetooth — GAN / Giiker)</option>
+            <option value="virtual"    ${s.timerInput==='virtual'               ?'selected':''}>Virtual Cube (keyboard moves)</option>
+            <option value="manual"     ${s.timerInput==='manual'                ?'selected':''}>Manual entry (type time)</option>
           </select>
         </div>
         <div class="setting-row">
