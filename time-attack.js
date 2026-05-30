@@ -66,7 +66,11 @@
   function selectSet(key) {
     activeKey = key;
     activeSet = sets[key];
-    order     = activeSet.cases.map(function (_, i) { return i; });
+    // Default order: sequential
+    order = activeSet.cases.map(function (_, i) { return i; });
+    // Restore saved order if exists
+    var saved = _loadOrder(key);
+    if (saved && saved.length === order.length) order = saved;
     renderPreRun(document.getElementById('ta-content'));
   }
 
@@ -74,27 +78,43 @@
     if (!el) return;
     var runs = history[activeKey] || [];
     var pb   = runs.length ? Math.min.apply(null, runs.map(function (r) { return r.total; })) : null;
+
+    // Build order editor: drag chips to reorder
+    var orderChips = order.map(function(i, pos) {
+      var c = activeSet.cases[i];
+      return '<div class="ta-order-chip" draggable="true" data-pos="' + pos + '" data-idx="' + i + '"'
+        + ' ondragstart="window.TimeAttack._dragStart(event)"'
+        + ' ondragover="window.TimeAttack._dragOver(event)"'
+        + ' ondrop="window.TimeAttack._drop(event)">'
+        + '<span class="ta-chip-pos">' + (pos + 1) + '</span>'
+        + _esc(c.id)
+        + '</div>';
+    }).join('');
+
     var html = '<div class="ta-header">'
       + '<button class="btn-sm" onclick="window.TimeAttack.exitRun()">&#8592; Sets</button>'
       + '<span class="ta-title">' + _esc(activeSet.name) + ' Time Attack</span>'
       + '</div>'
       + '<div class="ta-prerun-info">'
-      + '<div class="ta-stat-big"><span>' + activeSet.cases.length + '</span><label>algorithms</label></div>'
+      + '<div class="ta-stat-big"><span>' + activeSet.cases.length + '</span><label>algs</label></div>'
       + (pb ? '<div class="ta-stat-big"><span>' + _fmt(pb) + '</span><label>PB</label></div>' : '')
       + (runs.length ? '<div class="ta-stat-big"><span>' + runs.length + '</span><label>runs</label></div>' : '')
       + '</div>'
-      + '<div class="ta-alg-order"><div class="ta-order-label">Order</div>'
-      + '<div class="ta-order-chips">'
-      + order.map(function (i) {
-          return '<span class="ta-chip">' + _esc(activeSet.cases[i].id) + '</span>';
-        }).join('')
-      + '</div>'
-      + '<button class="btn-sm" style="margin-top:6px" onclick="window.TimeAttack.shuffleOrder()">Shuffle order</button>'
-      + '</div>'
-      + '<div class="ta-hint">Press <kbd>Space</kbd> or tap to start</div>'
+
+      // Order editor
+      + '<div class="ta-alg-order">'
+      + '<div class="ta-order-label">Run order — drag to reorder</div>'
+      + '<div class="ta-order-grid" id="ta-order-grid">' + orderChips + '</div>'
+      + '<div style="display:flex;gap:6px;margin-top:6px">'
+      + '<button class="btn-sm" onclick="window.TimeAttack.shuffleOrder()">Shuffle</button>'
+      + '<button class="btn-sm" onclick="window.TimeAttack.resetOrder()">Reset</button>'
+      + '<button class="btn-sm" onclick="window.TimeAttack.reverseOrder()">Reverse</button>'
+      + '</div></div>'
+
+      + '<div class="ta-hint">Space or tap &#9654; when done with each alg</div>'
       + '<div class="ta-big-start" onclick="window.TimeAttack.startRun()">START</div>'
-      + _renderRunHistory()
-      + '</div>';
+      + _renderRunHistory();
+
     el.innerHTML = html;
   }
 
@@ -257,6 +277,38 @@
   }
 
   // ── Order ────────────────────────────────────────────────────────────────────
+  // ── Drag to reorder ──────────────────────────────────────────────────────────
+  var _dragSrcPos = -1;
+
+  function _dragStart(e) {
+    _dragSrcPos = parseInt(e.currentTarget.dataset.pos);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+  function _dragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+  function _drop(e) {
+    e.preventDefault();
+    var targetPos = parseInt(e.currentTarget.dataset.pos);
+    if (_dragSrcPos < 0 || _dragSrcPos === targetPos) return;
+    // Reorder
+    var moved = order.splice(_dragSrcPos, 1)[0];
+    order.splice(targetPos, 0, moved);
+    _dragSrcPos = -1;
+    _saveOrder(activeKey, order);
+    renderPreRun(document.getElementById('ta-content'));
+  }
+
+  function resetOrder() {
+    order = activeSet.cases.map(function(_, i) { return i; });
+    _saveOrder(activeKey, order);
+    renderPreRun(document.getElementById('ta-content'));
+  }
+
+  function reverseOrder() {
+    order = order.slice().reverse();
+    _saveOrder(activeKey, order);
+    renderPreRun(document.getElementById('ta-content'));
+  }
+
   function shuffleOrder() {
     for (var i = order.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
@@ -283,6 +335,20 @@
   }
 
   // ── Persistence ──────────────────────────────────────────────────────────────
+  function _saveOrder(key, ord) {
+    try {
+      var o = JSON.parse(localStorage.getItem('subx_ta_orders') || '{}');
+      o[key] = ord;
+      localStorage.setItem('subx_ta_orders', JSON.stringify(o));
+    } catch(e) {}
+  }
+  function _loadOrder(key) {
+    try {
+      var o = JSON.parse(localStorage.getItem('subx_ta_orders') || '{}');
+      return o[key] || null;
+    } catch(e) { return null; }
+  }
+
   function _saveHistory() {
     try { localStorage.setItem('subx_ta_history', JSON.stringify(history)); } catch(e) {}
   }
@@ -304,9 +370,10 @@
 
   window.TimeAttack = {
     init: init, show: show,
-    selectSet: selectSet, exitRun: exitRun,
+    selectSet: selectSet, exitRun: exitRun, resetOrder: resetOrder, reverseOrder: reverseOrder,
     startRun: startRun, markAlg: markAlg, cancelRun: cancelRun,
     shuffleOrder: shuffleOrder, renderPreRun: renderPreRun,
+    _dragStart: _dragStart, _dragOver: _dragOver, _drop: _drop,
   };
 
 })();

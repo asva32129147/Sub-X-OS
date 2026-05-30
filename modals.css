@@ -654,3 +654,25 @@
   line-height:1; transition:all .1s;
 }
 .scr-view-btn:hover, .scr-view-btn.active{ border-color:var(--accent); color:var(--accent); background:rgba(0,188,212,.08); }
+
+/* ═══ Time Attack — Order Editor ══════════════════════════════════════════════ */
+.ta-order-grid {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 8px; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 4px;
+  min-height: 36px;
+}
+.ta-order-chip {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 8px; background: var(--surface);
+  border: 1px solid var(--border2); border-radius: 3px;
+  font-size: 10px; color: var(--text2); cursor: grab;
+  user-select: none; -webkit-user-select: none;
+  transition: border-color .1s, background .1s;
+}
+.ta-order-chip:hover  { border-color: var(--accent); color: var(--text); }
+.ta-order-chip:active { cursor: grabbing; }
+.ta-chip-pos {
+  font-size: 8px; color: var(--text3);
+  min-width: 12px; text-align: center;
+}
