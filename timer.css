@@ -229,6 +229,37 @@
 .view.active { display: flex; }
 
 /* ═══ Scramble — top of main ════════════════════════════════════════════════ */
+/* Draw scramble buttons */
+#scramble-view-btns {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  justify-content: center;
+}
+.scr-view-btn {
+  font-size: 13px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text3);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all .1s;
+  line-height: 1.4;
+}
+.scr-view-btn:hover,
+.scr-view-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0,188,212,.08);
+}
+#scramble-draw-panel {
+  padding: 8px 16px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  justify-content: center;
+}
+
 #scramble-wrap {
   display: flex;
   align-items: flex-start;
@@ -501,6 +532,37 @@
 }
 
 /* ═══ Scramble alignment (controlled via inline style by Settings.applyScrambleAlign) ══ */
+/* Draw scramble buttons */
+#scramble-view-btns {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  justify-content: center;
+}
+.scr-view-btn {
+  font-size: 13px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text3);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all .1s;
+  line-height: 1.4;
+}
+.scr-view-btn:hover,
+.scr-view-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0,188,212,.08);
+}
+#scramble-draw-panel {
+  padding: 8px 16px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  justify-content: center;
+}
+
 #scramble-wrap {
   flex-wrap: wrap;
 }

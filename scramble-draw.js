@@ -5,11 +5,20 @@
 'use strict';
 
 (function () {
-  var mode    = 'hidden'; // 'hidden' | '2d' | '3d'
+  var mode    = localStorage.getItem('subx_scr_draw') || 'hidden'; // 'hidden' | '2d' | '3d'
   var lastAlg = '';
   var lastPzl = '3x3x3';
 
   function init() {
+    // Restore saved mode on load
+    if (mode !== 'hidden') {
+      _showPanel();
+      _updateBtns();
+      // Apply once player is ready
+      customElements.whenDefined('twisty-player').then(function() {
+        if (lastAlg) _applyToPlayer(lastAlg, lastPzl, mode);
+      }).catch(function(){});
+    }
     // Wait for twisty-player custom element to be defined
     if (typeof customElements !== 'undefined') {
       customElements.whenDefined('twisty-player').then(function () {
@@ -49,6 +58,7 @@
   }
 
   function _showPanel() {
+    localStorage.setItem('subx_scr_draw', mode);
     var panel = document.getElementById('scramble-draw-panel');
     if (panel) panel.style.display = mode === 'hidden' ? 'none' : 'flex';
   }
