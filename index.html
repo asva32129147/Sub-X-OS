@@ -118,6 +118,12 @@
         </twisty-player>
       </div>
 
+      <!-- Smart cube status bar - visible only when smartcube input mode is on -->
+      <div id="sc-status-bar" style="display:none">
+        <span id="sc-status-bar-text">Smart Cube not connected</span>
+        <button class="btn-sm" onclick="document.getElementById('smartcube-overlay').classList.toggle('open')">Connect</button>
+      </div>
+
       <!-- PB flash badge -->
       <div id="pb-flash" role="status" aria-live="polite">🏆 NEW PB!</div>
 

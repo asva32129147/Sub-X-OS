@@ -6,11 +6,17 @@
 'use strict';
 
 (function () {
+  // GAN old protocol (356i, 354M)
   var GAN_OLD_SVC  = '0000fff0-0000-1000-8000-00805f9b34fb';
   var GAN_OLD_RD   = '0000fff5-0000-1000-8000-00805f9b34fb';
+  // GAN new protocol (i3, i4, i4S, Carry S) — Nordic UART
   var GAN_NEW_SVC  = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
   var GAN_NEW_TX   = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
   var GAN_NEW_RX   = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+  // GAN i4S / 12 UI alternate service
+  var GAN_V2_SVC   = '0000aaaa-0000-1000-8000-00805f9b34fb';
+  var GAN_V2_RD    = '0000bbbb-0000-1000-8000-00805f9b34fb';
+  // Giiker i3s
   var GIIKER_SVC   = '0000aadb-0000-1000-8000-00805f9b34fb';
   var GIIKER_CHAR  = '0000aadc-0000-1000-8000-00805f9b34fb';
 
@@ -44,7 +50,7 @@
           { namePrefix: 'QY'  }, { namePrefix: 'MHC' },
           { namePrefix: 'GoCube' },
         ],
-        optionalServices: [GAN_OLD_SVC, GAN_NEW_SVC, GIIKER_SVC],
+        optionalServices: [GAN_OLD_SVC, GAN_NEW_SVC, GAN_V2_SVC, GIIKER_SVC],
       });
       picked = true;
 
@@ -53,14 +59,19 @@
       server = await device.gatt.connect();
       _status('Identifying ' + device.name + '…', 'info');
 
-      // Try protocols: GAN new → GAN old → Giiker
+      // Try all protocols: GAN new → GAN v2 → GAN old → Giiker
       var ok = false;
-      if (!ok) { try { await _initGANNew(); protocol = 'GAN (new)'; ok = true; } catch(e) {} }
-      if (!ok) { try { await _initGANOld(); protocol = 'GAN (old)'; ok = true; } catch(e) {} }
-      if (!ok) { try { await _initGiiker(); protocol = 'Giiker';    ok = true; } catch(e) {} }
+      if (!ok) { try { await _initGANNew(); protocol = 'GAN new'; ok = true; } catch(e) { console.log('GAN new failed:', e.message); } }
+      if (!ok) { try { await _initGANV2();  protocol = 'GAN v2';  ok = true; } catch(e) { console.log('GAN v2 failed:', e.message); } }
+      if (!ok) { try { await _initGANOld(); protocol = 'GAN old'; ok = true; } catch(e) { console.log('GAN old failed:', e.message); } }
+      if (!ok) { try { await _initGiiker(); protocol = 'Giiker';  ok = true; } catch(e) { console.log('Giiker failed:', e.message); } }
 
       if (!ok) {
-        _status('Connected to ' + device.name + ' but protocol not recognised. Only GAN and Giiker cubes are supported.', 'error');
+        var msg = 'Connected to ' + device.name + ' but no protocol matched. '
+          + 'Open browser console (F12) to see which services were found.';
+        _status(msg, 'error');
+        console.error('SmartCube: no protocol matched for', device.name,
+          '- check F12 console for service probe results');
         if (device.gatt.connected) device.gatt.disconnect();
         return;
       }
@@ -114,6 +125,14 @@
     if (d[0] === 0x02 && d.length >= 2 && d[1] < GAN_MOVES.length) {
       _record(GAN_MOVES[d[1]]);
     }
+  }
+
+  // ── GAN v2 (i4S, 12 UI) ────────────────────────────────────────────────────────
+  async function _initGANV2() {
+    var svc  = await server.getPrimaryService(GAN_V2_SVC);
+    var char = await svc.getCharacteristic(GAN_V2_RD);
+    await char.startNotifications();
+    char.addEventListener('characteristicvaluechanged', _onGANOld); // same format
   }
 
   // ── GAN old (356i, 354M) ────────────────────────────────────────────────────

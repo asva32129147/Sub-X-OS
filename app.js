@@ -19,6 +19,8 @@ const App = (() => {
     TimeAttack.init();
     VirtualCube.init();
     if (typeof ScrambleDraw !== 'undefined') ScrambleDraw.init();
+    // Show smart cube status bar if smartcube input mode is selected
+    _updateSmartCubeBar(Storage.getSettings().timerInput);
     // CloudSync and AuthUI wait for deferred Supabase SDK
     window.addEventListener('load', () => {
       if (typeof CloudSync !== 'undefined') CloudSync.init();
@@ -80,6 +82,7 @@ const App = (() => {
       VirtualCube.applyScramble(currentScramble);
     }
     // Update draw scramble (2D/3D panel)
+    _updateSmartCubeBar(s.timerInput);
     if (typeof ScrambleDraw !== 'undefined') {
       ScrambleDraw.update(currentScramble, _eventToPuzzle(currentEvent));
     }
@@ -140,6 +143,11 @@ const App = (() => {
       const el = document.getElementById(id);
       if (el) el.value = eventCode;
     });
+  }
+
+  function _updateSmartCubeBar(inputMode) {
+    var bar = document.getElementById('sc-status-bar');
+    if (bar) bar.style.display = inputMode === 'smartcube' ? 'flex' : 'none';
   }
 
   function onSettingsChange() {
