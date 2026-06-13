@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -7,517 +7,383 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" id="theme-color-meta" content="#1a1a1a">
-  <!-- v3 — cache bust -->
   <title>Sub-X OS</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>">
 
-  <link rel="stylesheet" href="base.css?v=20">
-  <link rel="stylesheet" href="timer.css?v=20">
-  <link rel="stylesheet" href="panels.css?v=20">
-  <link rel="stylesheet" href="modals.css?v=20">
-  <link rel="stylesheet" href="alg-trainer.css?v=20">
-
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600&family=Rubik:wght@300;400;600&family=Outfit:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-</head>
-<body>
+  <!-- Sub-X overrides (timer display, solve list, accent colour only) -->
+  <link rel="stylesheet" href="subx.css?v=21">
+  <link rel="stylesheet" href="alg-trainer.css?v=21">
 
-<!-- Hidden state element — timer.js writes data-state here AND on #timer-display -->
+  <!-- cubing.js 3D renders -->
+  <script src="https://cdn.cubing.net/js/cubing/twisty" type="module" defer></script>
+</head>
+<body class="overflow-hidden" style="height:100dvh">
 <div id="timer-state" data-state="idle" aria-hidden="true" style="display:none"></div>
 
-<!-- ═══════════════════════════════════════════════════════════════════════════
-     APP SHELL
-     Grid: [sidebar 180px] [main 1fr] [side 220px]   (desktop)
-     Mobile: flex column — sidebar hidden, mobile-bar shown
-══════════════════════════════════════════════════════════════════════════════ -->
-<div id="app">
+<!-- ══ APP SHELL ═══════════════════════════════════════════════════════════ -->
+<div id="app" class="d-flex" style="height:100dvh;overflow:hidden">
 
-  <!-- ── LEFT SIDEBAR (desktop only) ──────────────────────────────────────── -->
-  <nav id="sidebar" aria-label="Navigation">
+  <!-- ── SIDEBAR (desktop) ──────────────────────────────────────────────── -->
+  <nav id="sidebar" class="d-none d-md-flex flex-column border-end p-2 gap-1"
+       style="width:160px;min-width:160px;overflow-y:auto" aria-label="Navigation">
 
-    <div class="sb-logo" aria-label="Sub-X OS">Sub-X OS</div>
+    <div class="sb-logo fw-bold text-accent mb-1">Sub-X OS<span id="sync-indicator"></span></div>
 
-    <!-- Event -->
-    <div class="sb-section">
-      <div class="sb-label">Event</div>
-      <select id="event-selector" class="sb-select" aria-label="Select event"></select>
+    <small class="text-secondary text-uppercase" style="letter-spacing:.08em;font-size:9px">Event</small>
+    <select id="event-selector" class="form-select form-select-sm mb-1" aria-label="Event"></select>
+
+    <small class="text-secondary text-uppercase" style="letter-spacing:.08em;font-size:9px">Session</small>
+    <select id="session-selector" class="form-select form-select-sm" aria-label="Session"></select>
+    <div class="d-flex gap-1 mb-1">
+      <button id="btn-new-session"    class="btn btn-sm btn-outline-secondary flex-fill" title="New session">+New</button>
+      <button id="btn-rename-session" class="btn btn-sm btn-outline-secondary" title="Rename">✎</button>
+      <button id="btn-delete-session" class="btn btn-sm btn-outline-danger"    title="Delete">✕</button>
     </div>
 
-    <!-- Session -->
-    <div class="sb-section">
-      <div class="sb-label">Session</div>
-      <select id="session-selector" class="sb-select" aria-label="Select session"></select>
-      <div class="sb-row">
-        <button id="btn-new-session"    class="sb-btn" title="New session">+ New</button>
-        <button id="btn-rename-session" class="sb-btn" title="Rename session">✎</button>
-        <button id="btn-delete-session" class="sb-btn danger" title="Delete session">🗑</button>
-      </div>
-    </div>
+    <small class="text-secondary text-uppercase" style="letter-spacing:.08em;font-size:9px">View</small>
+    <button class="btn btn-sm btn-outline-info active w-100 text-start mb-0"
+            data-view="timer" onclick="showView('timer',this)">Timer</button>
+    <button class="btn btn-sm btn-outline-secondary w-100 text-start mb-2"
+            data-view="trainer" onclick="showView('trainer',this)">Alg Trainer</button>
 
-    <!-- Navigation -->
-    <div class="sb-section">
-      <div class="sb-label">View</div>
-      <button class="sb-nav active" data-view="timer"   onclick="showView('timer',this)">Timer</button>
-      <button class="sb-nav"        data-view="trainer" onclick="showView('trainer',this)">Alg Trainer</button>
-    </div>
-
-    <!-- Controls (push to bottom) -->
-    <div class="sb-section sb-bottom">
-      <button id="btn-inspection-toggle" class="sb-ctrl insp-on"
+    <!-- Bottom controls -->
+    <div class="mt-auto d-flex flex-column gap-1">
+      <button id="btn-inspection-toggle" class="btn btn-sm btn-outline-info insp-on"
               onclick="Timer.toggleInspection()">INSP: ON</button>
-      <button class="sb-ctrl" onclick="App.nextScramble()">New Scramble</button>
-      <button class="sb-ctrl" onclick="SessionManager.open()">Sessions</button>
-      <button class="sb-ctrl" onclick="UniversalImport.open()">Import Data</button>
-      <button class="sb-ctrl" onclick="showView('timeattack',this)">Time Attack</button>
-      <button class="sb-ctrl" id="btn-account" onclick="AuthUI.open()">Sign In</button>
-      <button class="sb-ctrl" id="btn-settings" onclick="Settings.open()">Settings</button>
+      <button class="btn btn-sm btn-outline-secondary w-100" onclick="App.nextScramble()">New Scramble</button>
+      <button class="btn btn-sm btn-outline-secondary w-100" onclick="SessionManager.open()">Sessions</button>
+      <button class="btn btn-sm btn-outline-secondary w-100" onclick="UniversalImport.open()">Import Data</button>
+      <button class="btn btn-sm btn-outline-secondary w-100" onclick="showView('timeattack',this)">Time Attack</button>
+      <button class="btn btn-sm btn-outline-secondary w-100" id="btn-account" onclick="AuthUI.open()">Sign In</button>
+      <button class="btn btn-sm btn-outline-secondary w-100" id="btn-settings" onclick="Settings.open()">Settings</button>
     </div>
-
   </nav>
 
-  <!-- ── MOBILE TOP BAR (≤640px only) ─────────────────────────────────────── -->
-  <header id="mobile-bar" role="banner">
-    <button id="btn-mobile-menu" class="mob-icon-btn" onclick="openDrawer()"
-            aria-label="Open menu">☰</button>
-    <span class="mb-title">Sub-X OS</span>
-    <select id="event-sel-mob" class="mob-sel" aria-label="Event"
-            onchange="syncEventFromMob(this)"></select>
-    <button id="insp-btn-mob" class="mob-insp insp-on"
-            onclick="Timer.toggleInspection();syncInspBtns()">INSP</button>
-    <button class="mob-icon-btn" onclick="Settings.open()" aria-label="Settings">⚙</button>
-  </header>
+  <!-- ── MAIN AREA ──────────────────────────────────────────────────────── -->
+  <main id="main-area" class="flex-grow-1 d-flex flex-column overflow-hidden" role="main">
 
-  <!-- ── MAIN AREA ─────────────────────────────────────────────────────────── -->
-  <main id="main-area" role="main">
+    <!-- Mobile top bar -->
+    <header id="mobile-bar" class="d-flex d-md-none align-items-center gap-2 px-2 py-1 border-bottom">
+      <button class="btn btn-sm btn-outline-secondary" onclick="openDrawer()" aria-label="Menu">☰</button>
+      <span class="fw-bold text-accent">Sub-X OS</span>
+      <select id="event-sel-mob" class="form-select form-select-sm flex-grow-1"
+              onchange="syncEventFromMob(this)"></select>
+      <button id="insp-btn-mob" class="btn btn-sm btn-outline-info insp-on"
+              onclick="Timer.toggleInspection();syncInspBtns()">INSP</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="Settings.open()">⚙</button>
+    </header>
 
-    <!-- ── TIMER VIEW ────────────────────────────────────────────────────── -->
-    <div id="view-timer" class="view active">
-
-      <!-- Scramble at very top -->
-      <div id="scramble-wrap" role="region" aria-label="Scramble">
-        <div id="scramble-event-label" style="display:none"></div>
-        <div id="scramble-display" aria-live="polite">Generating...</div>
-        <div id="scramble-view-btns">
-          <button class="scr-view-btn" id="btn-draw-scr" onclick="ScrambleDraw.toggle()" title="Draw scramble">&#9638; Draw</button>
-          <button class="scr-view-btn" id="btn-3d-scr" onclick="ScrambleDraw.toggle3D()" title="3D view">&#9679; 3D</button>
+    <!-- TIMER VIEW -->
+    <div id="view-timer" class="view active d-flex flex-column flex-grow-1 overflow-hidden">
+      <!-- Scramble -->
+      <div id="scramble-wrap" class="px-3 pt-2 pb-1 text-center border-bottom">
+        <div id="scramble-event-label" class="text-info fw-bold" style="display:none;letter-spacing:.1em"></div>
+        <div id="scramble-display" class="scramble-text" aria-live="polite">Generating...</div>
+        <div class="d-flex justify-content-center align-items-center gap-2 mt-1">
+          <div id="scramble-view-btns" class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-secondary scr-view-btn" id="btn-draw-scr"
+                    onclick="ScrambleDraw.toggle()">▨ Draw</button>
+            <button class="btn btn-sm btn-outline-secondary scr-view-btn" id="btn-3d-scr"
+                    onclick="ScrambleDraw.toggle3D()">● 3D</button>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="App.nextScramble()">↺</button>
         </div>
-        <button class="scr-btn" onclick="App.nextScramble()"
-                title="New scramble (N)" aria-label="New scramble">↺</button>
       </div>
 
-      <!-- Draw scramble panel — sits below scramble-wrap, spans full width -->
-      <div id="scramble-draw-panel" style="display:none">
-        <twisty-player id="scramble-twisty"
-          puzzle="3x3x3"
-          experimental-setup-alg=""
-          hint-facelets="none"
-          control-panel="none"
-          visualization="experimental-2D"
-          style="width:100%;max-width:340px;height:200px;margin:0 auto;display:block">
-        </twisty-player>
+      <!-- Draw scramble panel -->
+      <div id="scramble-draw-panel" class="d-flex justify-content-center py-2 border-bottom" style="display:none!important">
+        <twisty-player id="scramble-twisty" puzzle="3x3x3" experimental-setup-alg=""
+          hint-facelets="none" control-panel="none" visualization="experimental-2D"
+          style="width:100%;max-width:340px;height:200px"></twisty-player>
       </div>
 
-      <!-- Smart cube status bar - visible only when smartcube input mode is on -->
-      <div id="sc-status-bar" style="display:none">
-        <span id="sc-status-bar-text">Smart Cube not connected</span>
-        <button class="btn-sm" onclick="document.getElementById('smartcube-overlay').classList.toggle('open')">Connect</button>
+      <!-- Smart cube bar -->
+      <div id="sc-status-bar" class="d-none align-items-center justify-content-between px-3 py-1 border-bottom small">
+        <span id="sc-status-bar-text" class="text-secondary">Smart Cube not connected</span>
+        <button class="btn btn-sm btn-outline-info"
+                onclick="document.getElementById('smartcube-overlay').classList.toggle('open')">Connect</button>
       </div>
 
-      <!-- PB flash badge -->
-      <div id="pb-flash" role="status" aria-live="polite">🏆 NEW PB!</div>
+      <!-- PB flash -->
+      <div id="pb-flash" role="status" aria-live="polite"></div>
 
-      <!-- Timer centre — this entire area is the tap target -->
-      <div id="timer-area" role="button" aria-label="Timer — tap or hold Space">
+      <!-- Timer centre -->
+      <div id="timer-area" class="flex-grow-1 d-flex flex-column align-items-center justify-content-center"
+           role="button" aria-label="Timer">
         <div id="timer-display" data-state="idle" aria-live="off">0.00</div>
-        <div id="inspection-display" aria-live="assertive"></div>
+        <div id="inspection-display" class="text-warning fs-3 fw-bold mt-2" aria-live="assertive"></div>
       </div>
 
-      <!-- Hint at bottom of main -->
-      <div id="timer-hint" aria-hidden="true">
-        Hold <kbd>Space</kbd> to start &nbsp;·&nbsp; <kbd>Esc</kbd> cancel
-      </div>
-
-      <!-- Stat detail popup -->
-      <!-- Virtual cube panel (shown when virtual input mode is active) -->
-      <div id="vc-wrap" style="display:none">
-        <div id="vc-header">
-          <span id="vc-last-move" class="vc-last-move"></span>
-          <span id="vc-solved" class="vc-solved" style="display:none">SOLVED!</span>
-          <span class="vc-hint">U F R L D B (+ ' or 2) &nbsp;·&nbsp; execute moves to solve the scramble</span>
+      <!-- Virtual cube panel -->
+      <div id="vc-wrap" class="border-top px-3 py-2" style="display:none">
+        <div id="vc-header" class="d-flex align-items-center gap-2 mb-2">
+          <span id="vc-last-move" class="vc-last-move text-info fs-4 fw-bold"></span>
+          <span id="vc-solved" class="badge bg-success" style="display:none">SOLVED!</span>
+          <small class="text-secondary ms-auto">U F R L D B (+ ' or 2)</small>
         </div>
         <div id="vc-faces"></div>
       </div>
 
+      <!-- Timer hint -->
+      <div id="timer-hint" class="text-center text-secondary small py-2 border-top" aria-hidden="true">
+        Hold <kbd>Space</kbd> to start · <kbd>Esc</kbd> cancel
+      </div>
       <div id="stat-detail-overlay" role="dialog" aria-hidden="true"></div>
-
-    </div><!-- /view-timer -->
-
-    <!-- ── TRAINER VIEW ──────────────────────────────────────────────────── -->
-    <div id="view-trainer" class="view">
-      <div id="trainer-panel">
-        <div id="trainer-content"><!-- Populated by AlgTrainer.init() --></div>
-      </div>
-    </div><!-- /view-trainer -->
-
-    <!-- ── TIME ATTACK VIEW ─────────────────────────────────────────────── -->
-    <div id="view-timeattack" class="view">
-      <div id="time-attack-panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0"><div id="ta-content"></div></div>
     </div>
 
-  </main><!-- /main-area -->
-
-  <!-- ── RIGHT PANEL (stats + solves) ─────────────────────────────────────── -->
-  <aside id="side" aria-label="Statistics and solve list">
-    <div id="stats-panel" role="region" aria-label="Statistics"></div>
-    <div id="solve-panel">
-      <div class="solve-panel-header">
-        <span>Solves</span>
-        <button class="btn-sm" onclick="Sessions.exportCSTimer()">Export</button>
+    <!-- TRAINER VIEW -->
+    <div id="view-trainer" class="view flex-grow-1 overflow-hidden" style="display:none">
+      <div id="trainer-panel" class="h-100 overflow-y-auto">
+        <div id="trainer-content" class="p-3"></div>
       </div>
-      <div id="solve-list" role="list"></div>
     </div>
-    <div id="session-controls">
-      <button onclick="document.getElementById('btn-new-session').click()">New</button>
-      <button onclick="document.getElementById('btn-rename-session').click()">Rename</button>
-      <button style="color:var(--red)"
+
+    <!-- TIME ATTACK VIEW -->
+    <div id="view-timeattack" class="view flex-grow-1 overflow-hidden" style="display:none">
+      <div id="time-attack-panel" class="h-100 overflow-y-auto">
+        <div id="ta-content" class="p-3"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── RIGHT PANEL ────────────────────────────────────────────────────── -->
+  <aside id="side" class="d-none d-md-flex flex-column border-start overflow-hidden"
+         style="width:220px;min-width:220px" aria-label="Statistics">
+    <div id="stats-panel" class="px-2 pt-2"></div>
+    <div id="solve-panel" class="flex-grow-1 d-flex flex-column overflow-hidden border-top mt-1">
+      <div class="d-flex align-items-center justify-content-between px-2 py-1">
+        <small class="text-secondary text-uppercase" style="font-size:9px;letter-spacing:.08em">Solves</small>
+        <button class="btn btn-sm btn-outline-secondary py-0" style="font-size:10px"
+                onclick="Sessions.exportCSTimer()">Export</button>
+      </div>
+      <div id="solve-list" class="overflow-y-auto flex-grow-1" role="list"></div>
+    </div>
+    <div id="session-controls" class="d-flex gap-1 p-2 border-top">
+      <button class="btn btn-sm btn-outline-secondary flex-fill"
+              onclick="document.getElementById('btn-new-session').click()">New</button>
+      <button class="btn btn-sm btn-outline-secondary flex-fill"
+              onclick="document.getElementById('btn-rename-session').click()">Rename</button>
+      <button class="btn btn-sm btn-outline-danger flex-fill"
               onclick="document.getElementById('btn-delete-session').click()">Delete</button>
     </div>
   </aside>
 
 </div><!-- /app -->
 
-<!-- ── MOBILE DRAWER (slides in from left on mobile) ───────────────────────── -->
-<div id="drawer-overlay" onclick="closeDrawer()" aria-hidden="true"></div>
-<div id="mobile-drawer" role="navigation" aria-label="Mobile navigation">
-  <div class="sb-logo">Sub-X OS</div>
-
-  <div class="sb-section">
-    <div class="sb-label">Event</div>
-    <select id="event-sel-drawer" class="sb-select"
+<!-- ══ MOBILE DRAWER ═══════════════════════════════════════════════════════ -->
+<div id="drawer-overlay" onclick="closeDrawer()" aria-hidden="true" class="d-md-none"></div>
+<div id="mobile-drawer" class="d-md-none" role="navigation" aria-label="Mobile navigation">
+  <div class="fw-bold text-accent p-2 border-bottom">Sub-X OS</div>
+  <div class="p-2 d-flex flex-column gap-1">
+    <small class="text-secondary">Event</small>
+    <select id="event-sel-drawer" class="form-select form-select-sm"
             onchange="syncEventFromDrawer(this)"></select>
-  </div>
-
-  <div class="sb-section">
-    <div class="sb-label">Session</div>
-    <select id="sess-sel-drawer" class="sb-select"
+    <small class="text-secondary mt-1">Session</small>
+    <select id="sess-sel-drawer" class="form-select form-select-sm"
             onchange="Storage.setCurrentSession(this.value);App.onSessionSwitch();closeDrawer()"></select>
-    <div class="sb-row">
+    <div class="d-flex gap-1">
       <button onclick="document.getElementById('btn-new-session').click();closeDrawer()"
-              class="sb-btn">+ New</button>
+              class="btn btn-sm btn-outline-secondary flex-fill">+New</button>
       <button onclick="document.getElementById('btn-rename-session').click();closeDrawer()"
-              class="sb-btn">✎</button>
+              class="btn btn-sm btn-outline-secondary">✎</button>
       <button onclick="document.getElementById('btn-delete-session').click();closeDrawer()"
-              class="sb-btn danger">🗑</button>
+              class="btn btn-sm btn-outline-danger">✕</button>
     </div>
-  </div>
-
-  <div class="sb-section">
-    <div class="sb-label">View</div>
-    <button class="sb-nav" onclick="showView('timer',null);closeDrawer()">Timer</button>
-    <button class="sb-nav" onclick="showView('trainer',null);closeDrawer()">Alg Trainer</button>
-  </div>
-
-  <div class="sb-section">
-    <button class="sb-ctrl" onclick="SessionManager.open();closeDrawer()">Sessions</button>
-    <button class="sb-ctrl" onclick="UniversalImport.open();closeDrawer()">Import Data</button>
-    <button class="sb-ctrl" onclick="showView('timeattack',null);closeDrawer()">Time Attack</button>
-    <button class="sb-ctrl" onclick="Timer.toggleInspection();syncInspBtns();closeDrawer()">
-      Toggle Inspection</button>
-    <button class="sb-ctrl" onclick="Settings.open();closeDrawer()">Settings</button>
+    <hr class="my-1">
+    <button class="btn btn-sm btn-outline-secondary text-start" onclick="showView('timer',null);closeDrawer()">Timer</button>
+    <button class="btn btn-sm btn-outline-secondary text-start" onclick="showView('trainer',null);closeDrawer()">Alg Trainer</button>
+    <button class="btn btn-sm btn-outline-secondary text-start" onclick="SessionManager.open();closeDrawer()">Sessions</button>
+    <button class="btn btn-sm btn-outline-secondary text-start" onclick="UniversalImport.open();closeDrawer()">Import Data</button>
+    <button class="btn btn-sm btn-outline-secondary text-start" onclick="showView('timeattack',null);closeDrawer()">Time Attack</button>
+    <button class="btn btn-sm btn-outline-secondary text-start" onclick="Timer.toggleInspection();syncInspBtns();closeDrawer()">Toggle Inspection</button>
+    <button class="btn btn-sm btn-outline-secondary text-start" onclick="Settings.open();closeDrawer()">Settings</button>
   </div>
 </div>
 
-<!-- ── SETTINGS MODAL ─────────────────────────────────────────────────────── -->
-<div id="settings-overlay" class="modal-overlay" role="dialog" aria-modal="true"
-     aria-label="Settings">
-  <div class="modal-box">
-    <div class="modal-header">
-      <h2>Settings</h2>
-      <button id="settings-close" aria-label="Close settings">✕</button>
-    </div>
-    <div id="settings-content"></div>
-  </div>
+<!-- ══ BOOTSTRAP MODALS ════════════════════════════════════════════════════ -->
+
+<!-- Settings -->
+<div id="settings-overlay" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal-box"><div class="modal-header"><h2>Settings</h2>
+    <button id="settings-close" aria-label="Close">✕</button></div>
+  <div id="settings-content"></div></div>
 </div>
 
-<!-- ── SESSION MANAGER MODAL ─────────────────────────────────────────────── -->
-<!-- SessionManager.open() creates its modal dynamically -->
-
-<!-- ── UNIVERSAL IMPORT MODAL ─────────────────────────────────────────────── -->
-<!-- UniversalImport.open() creates its modal dynamically -->
-
-<!-- ── SOLVE SUMMARY MODAL ─────────────────────────────────────────────────── -->
+<!-- Solve Summary -->
 <div id="solve-summary-overlay" class="modal-overlay" role="dialog" aria-modal="true">
-  <div class="modal-box" style="max-width:520px">
-    <div class="modal-header">
-      <h2>Solve Detail</h2>
-      <button onclick="SolveSummary.close()" aria-label="Close">✕</button>
-    </div>
-    <div id="solve-summary-content"></div>
-  </div>
+  <div class="modal-box" style="max-width:520px"><div class="modal-header"><h2>Solve Detail</h2>
+    <button onclick="SolveSummary.close()" aria-label="Close">✕</button></div>
+  <div id="solve-summary-content"></div></div>
 </div>
 <div id="ss-toast" class="ss-toast" aria-live="polite"></div>
 
-<!-- ── SMART CUBE PANEL (sidebar section) ──────────────────────────────────── -->
+<!-- Smart Cube -->
 <div id="smartcube-overlay" class="modal-overlay" role="dialog">
   <div class="modal-box" style="max-width:480px">
-    <div class="modal-header">
-      <h2>Smart Cube</h2>
+    <div class="modal-header"><h2>Smart Cube</h2>
       <button onclick="document.getElementById('smartcube-overlay').classList.remove('open')" aria-label="Close">✕</button>
     </div>
-    <div id="smartcube-panel">
-      <div id="smartcube-status" data-state="idle" class="sc-status">
-        No cube connected
+    <div id="smartcube-panel" class="p-2">
+      <div id="smartcube-status" data-state="idle" class="sc-status mb-2">No cube connected</div>
+      <div class="d-flex gap-2 mb-2">
+        <button id="btn-smartcube-connect" class="btn btn-success btn-sm" onclick="SmartCube.connect()">Connect Cube</button>
+        <button id="btn-smartcube-disconnect" class="btn btn-outline-secondary btn-sm" style="display:none" onclick="SmartCube.disconnect()">Disconnect</button>
+        <button id="btn-gyro-toggle" class="btn btn-outline-secondary btn-sm" onclick="Gyro.toggle()">Gyro</button>
+        <button id="btn-gyro-reset" class="btn btn-outline-secondary btn-sm" onclick="Gyro.reset()">Reset</button>
       </div>
-      <div class="sc-actions">
-        <button id="btn-smartcube-connect" class="btn-primary" style="margin-right:6px" onclick="SmartCube.connect()">
-          Connect Cube
-        </button>
-        <button id="btn-smartcube-disconnect" style="display:none" class="btn-sm" onclick="SmartCube.disconnect()">Disconnect</button>
-        <button id="btn-gyro-toggle" class="btn-sm" onclick="Gyro.toggle()" title="Phone gyro">
-          Gyro
-        </button>
-        <button id="btn-gyro-reset" class="btn-sm" onclick="Gyro.reset()" title="Reset gyro calibration">
-          Reset
-        </button>
-      </div>
-      <!-- Gyro visual -->
       <div id="gyro-panel" style="display:none">
-        <div class="sc-section-label">Gyro Orientation</div>
-        <div id="gyro-cube-wrap">
-          <div id="gyro-cube">
-            <div class="gc-face gc-front">F</div>
-            <div class="gc-face gc-back">B</div>
-            <div class="gc-face gc-left">L</div>
-            <div class="gc-face gc-right">R</div>
-            <div class="gc-face gc-top">U</div>
-            <div class="gc-face gc-bottom">D</div>
-          </div>
-        </div>
+        <div class="small text-secondary mb-1">Gyro Orientation</div>
+        <div id="gyro-cube-wrap"><div id="gyro-cube">
+          <div class="gc-face gc-front">F</div><div class="gc-face gc-back">B</div>
+          <div class="gc-face gc-left">L</div><div class="gc-face gc-right">R</div>
+          <div class="gc-face gc-top">U</div><div class="gc-face gc-bottom">D</div>
+        </div></div>
         <div class="sc-gyro-vals" id="gyro-vals">α:— β:— γ:—</div>
-        <div id="gyro-mode-label" style="font-size:9px;color:var(--text3);text-align:center;margin-top:3px">Not active</div>
-        <div class="sc-section-label" style="margin-top:8px">Drag to calibrate zero point</div>
-        <div id="gyro-cal-bar" title="Drag to offset calibration">
-          <div id="gyro-cal-thumb"></div>
-        </div>
+        <div id="gyro-mode-label" class="text-secondary text-center" style="font-size:9px">Not active</div>
+        <div id="gyro-cal-bar" class="mt-2"><div id="gyro-cal-thumb"></div></div>
       </div>
-      <!-- TPS display -->
-      <div id="sc-tps" class="sc-tps"></div>
-      <!-- Live move display -->
+      <div id="sc-tps" class="sc-tps mt-2"></div>
       <div class="sc-section-label" id="sc-move-label" style="display:none">Live Moves</div>
-      <div id="smartcube-moves" class="sc-moves"></div>
-      <!-- Cube type info -->
-      <div id="sc-info" class="sc-info"></div>
+      <div id="smartcube-moves" class="sc-moves mt-1"></div>
     </div>
   </div>
 </div>
 
-<!-- ── MOBILE BOTTOM TAB BAR ─────────────────────────────────────────────── -->
-<div id="mobile-tabs" role="tablist" aria-label="Navigation tabs">
-  <button class="mob-tab active" role="tab" aria-selected="true"
-          onclick="mobileTab('timer',this)">
-    <span>Timer</span>
-  </button>
-  <button class="mob-tab" role="tab" aria-selected="false"
-          onclick="mobileTab('stats',this)">
-    <span>Stats</span>
-  </button>
-  <button class="mob-tab" role="tab" aria-selected="false"
-          onclick="mobileTab('trainer',this)">
-    <span>Trainer</span>
-  </button>
-  <button class="mob-tab" role="tab" aria-selected="false"
-          onclick="mobileTab('timeattack',this)">
-    <span>Attack</span>
-  </button>
-  <button class="mob-tab" role="tab" aria-selected="false"
-          onclick="Settings.open()">
-    <span>Settings</span>
-  </button>
+<!-- ══ MOBILE BOTTOM TABS ══════════════════════════════════════════════════ -->
+<div id="mobile-tabs" class="d-flex d-md-none border-top" role="tablist">
+  <button class="mob-tab active flex-fill" role="tab" onclick="mobileTab('timer',this)">Timer</button>
+  <button class="mob-tab flex-fill" role="tab" onclick="mobileTab('stats',this)">Solves</button>
+  <button class="mob-tab flex-fill" role="tab" onclick="mobileTab('trainer',this)">Trainer</button>
+  <button class="mob-tab flex-fill" role="tab" onclick="mobileTab('timeattack',this)">Attack</button>
+  <button class="mob-tab flex-fill" role="tab" onclick="Settings.open()">Settings</button>
 </div>
 
-<!-- Hidden file input for csTimer import -->
-<input type="file" id="import-file-input" accept=".txt,.json"
-       aria-hidden="true" style="display:none"
-       onchange="Sessions.importCSTimer(this.files[0])">
+<input type="file" id="import-file-input" accept=".txt,.json" aria-hidden="true"
+       style="display:none" onchange="Sessions.importCSTimer(this.files[0])">
 
-<!-- ═══════════════════════════════════════════════════════════════════════════
-     JS — LOAD ORDER IS CRITICAL (dependencies first, app.js last)
-     utils.js    → no deps
-     storage.js  → utils
-     scramble.js → none
-     timer.js    → utils, storage
-     sessions.js → utils, storage
-     stats.js    → utils, storage
-     settings.js → storage, scramble, timer
-     alg-data.js → none
-     alg-trainer.js → utils, storage, alg-data
-     app.js      → everything (loaded last)
-══════════════════════════════════════════════════════════════════════════════ -->
-<!-- Supabase CDN removed — add back when setting up cloud sync -->
-<!-- cubing.js twisty-player: 3D cube renders (same as cubing.net) -->
-<script src="https://cdn.cubing.net/js/cubing/twisty" type="module" defer></script>
-<script src="utils.js?v=20"></script>
-<script src="storage.js?v=20"></script>
-<script src="scramble.js?v=20"></script>
-<script src="timer.js?v=20"></script>
-<script src="sessions.js?v=20"></script>
-<script src="stats.js?v=20"></script>
-<script src="settings.js?v=20"></script>
-<script src="alg-data.js?v=20"></script>
-<script src="alg-trainer.js?v=20"></script>
-<script src="solve-summary.js?v=20"></script>
-<script src="smartcube.js?v=20"></script>
-<script src="gyro.js?v=20"></script>
-<script src="session-manager.js?v=20"></script>
-<script src="universal-import.js?v=20"></script>
-<script src="time-attack.js?v=20"></script>
-<script src="virtual-cube.js?v=20"></script>
-<script src="scramble-draw.js?v=20"></script>
-<script src="cloud-sync.js?v=20"></script>
-<script src="auth-ui.js?v=20"></script>
-<script src="app.js?v=20"></script>
+<!-- ══ SCRIPTS (order is critical) ════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+<script src="utils.js?v=21"></script>
+<script src="storage.js?v=21"></script>
+<script src="scramble.js?v=21"></script>
+<script src="timer.js?v=21"></script>
+<script src="sessions.js?v=21"></script>
+<script src="stats.js?v=21"></script>
+<script src="settings.js?v=21"></script>
+<script src="alg-data.js?v=21"></script>
+<script src="alg-trainer.js?v=21"></script>
+<script src="solve-summary.js?v=21"></script>
+<script src="smartcube.js?v=21"></script>
+<script src="gyro.js?v=21"></script>
+<script src="session-manager.js?v=21"></script>
+<script src="universal-import.js?v=21"></script>
+<script src="time-attack.js?v=21"></script>
+<script src="virtual-cube.js?v=21"></script>
+<script src="scramble-draw.js?v=21"></script>
+<script src="stackmat.js?v=21"></script>
+<script src="cloud-sync.js?v=21"></script>
+<script src="auth-ui.js?v=21"></script>
+<script src="app.js?v=21"></script>
 
 <script>
-// ── View switching ────────────────────────────────────────────────────────────
+/* ── showView, mobileTab, drawer, scramble key ─────────────────────────── */
 function showView(name, btn) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.sb-nav, .mob-tab[data-view]').forEach(b => b.classList.remove('active'));
-  document.getElementById('view-' + name)?.classList.add('active');
-  // Highlight matching nav buttons
-  document.querySelectorAll('[data-view="' + name + '"]').forEach(b => b.classList.add('active'));
+  document.querySelectorAll('.view').forEach(function(v) {
+    v.style.display = 'none'; v.classList.remove('active');
+  });
+  var el = document.getElementById('view-' + name);
+  if (el) { el.style.display = 'flex'; el.classList.add('active'); }
+  document.querySelectorAll('[data-view]').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.view === name);
+    if (b.dataset.view === name) { b.classList.replace('btn-outline-secondary','btn-outline-info') || b.classList.add('btn-outline-info'); }
+    else { b.classList.replace('btn-outline-info','btn-outline-secondary'); }
+  });
   if (btn) btn.classList.add('active');
-  if (name === 'trainer') { AlgTrainer.show(); Timer.cancelAll(); }
-  else AlgTrainer.hide();
-  if (name === 'timeattack') { TimeAttack.show(); Timer.cancelAll(); }
+  if (name === 'trainer')    { if (typeof AlgTrainer !== 'undefined') AlgTrainer.show(); if (typeof Timer !== 'undefined') Timer.cancelAll(); }
+  else                       { if (typeof AlgTrainer !== 'undefined') AlgTrainer.hide(); }
+  if (name === 'timeattack') { if (typeof TimeAttack !== 'undefined') TimeAttack.show(); if (typeof Timer !== 'undefined') Timer.cancelAll(); }
 }
 
-// ── Mobile drawer ─────────────────────────────────────────────────────────────
+function mobileTab(tab, btn) {
+  document.querySelectorAll('.mob-tab').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var side = document.getElementById('side');
+  if (tab === 'stats') {
+    var wasOpen = side && side.classList.contains('open');
+    showView('timer', null);
+    if (side) side.classList.toggle('open', !wasOpen);
+    if (!wasOpen) setTimeout(function() { var sl = document.getElementById('solve-list'); if (sl) sl.scrollTop = 0; }, 50);
+  } else {
+    if (side) side.classList.remove('open');
+    showView(tab, null);
+  }
+}
+document.addEventListener('click', function(e) {
+  var side = document.getElementById('side');
+  if (!side || !side.classList.contains('open')) return;
+  if (!side.contains(e.target) && !e.target.closest('.mob-tab')) side.classList.remove('open');
+});
+
 function openDrawer() {
   document.getElementById('mobile-drawer').classList.add('open');
   document.getElementById('drawer-overlay').classList.add('open');
-  // Sync selectors
-  const evD = document.getElementById('event-sel-drawer');
-  const seD = document.getElementById('sess-sel-drawer');
-  const evM = document.getElementById('event-selector');
-  const seM = document.getElementById('session-selector');
-  if (evD && evM) { evD.innerHTML = evM.innerHTML; evD.value = evM.value; }
-  if (seD && seM) { seD.innerHTML = seM.innerHTML; seD.value = seM.value; }
+  var evD = document.getElementById('event-sel-drawer');
+  var seD = document.getElementById('sess-sel-drawer');
+  var evS = document.getElementById('event-selector');
+  var seS = document.getElementById('session-selector');
+  if (evD && evS) evD.innerHTML = evS.innerHTML, evD.value = evS.value;
+  if (seD && seS) seD.innerHTML = seS.innerHTML, seD.value = seS.value;
 }
 function closeDrawer() {
   document.getElementById('mobile-drawer').classList.remove('open');
   document.getElementById('drawer-overlay').classList.remove('open');
 }
-
-// ── Mobile event sync ─────────────────────────────────────────────────────────
-function syncEventFromMob(sel) {
-  const main = document.getElementById('event-selector');
-  if (main) { main.value = sel.value; main.dispatchEvent(new Event('change')); }
-}
-function syncEventFromDrawer(sel) {
-  const main = document.getElementById('event-selector');
-  if (main) { main.value = sel.value; main.dispatchEvent(new Event('change')); }
-  const mob = document.getElementById('event-sel-mob');
-  if (mob) mob.value = sel.value;
-}
-
-// ── Inspection button sync ────────────────────────────────────────────────────
+function syncEventFromMob(sel) { var ev = document.getElementById('event-selector'); if (ev) { ev.value = sel.value; ev.dispatchEvent(new Event('change')); } }
+function syncEventFromDrawer(sel) { var ev = document.getElementById('event-selector'); if (ev) { ev.value = sel.value; ev.dispatchEvent(new Event('change')); } }
 function syncInspBtns() {
-  const s = Storage.getSettings();
-  const mode = s.inspectionMode || (s.inspection ? 'always' : 'off');
-  const on = mode !== 'off';
-  const labels = { always:'INSP: ON', 'except-bld':'INSP: -BLD', updown:'INSP: ↑↓', off:'INSP: OFF' };
-  const mob_labels = { always:'INSP✓', 'except-bld':'-BLD', updown:'↑↓', off:'INSP' };
-  const mainBtn = document.getElementById('btn-inspection-toggle');
-  const mobBtn  = document.getElementById('insp-btn-mob');
-  if (mainBtn) { mainBtn.textContent = labels[mode]||'INSP'; mainBtn.classList.toggle('insp-on', on); }
-  if (mobBtn)  { mobBtn.textContent  = mob_labels[mode]||'INSP'; mobBtn.classList.toggle('insp-on', on); }
-}
-
-// ── Mobile tabs ───────────────────────────────────────────────────────────────
-function mobileTab(name, btn) {
-  document.querySelectorAll('.mob-tab').forEach(b => {
-    b.classList.remove('active');
-    b.setAttribute('aria-selected','false');
+  var on = typeof Timer !== 'undefined' && Timer.inspectionEnabled && Timer.inspectionEnabled();
+  ['btn-inspection-toggle','insp-btn-mob'].forEach(function(id) {
+    var b = document.getElementById(id);
+    if (!b) return;
+    b.textContent = on ? 'INSP: ON' : 'INSP: OFF';
+    b.classList.toggle('btn-outline-info', on);
+    b.classList.toggle('btn-outline-secondary', !on);
   });
-  btn.classList.add('active');
-  btn.setAttribute('aria-selected','true');
-  if (name === 'stats') {
-    // Toggle stats bottom sheet
-    const side = document.getElementById('side');
-    const wasOpen = side.classList.contains('open');
-    side.classList.toggle('open', !wasOpen);
-    showView('timer', null);
-  } else {
-    document.getElementById('side').classList.remove('open');
-    showView(name, null);
-  }
 }
-
-// ── Keep mobile event selector in sync ────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  const mainEv = document.getElementById('event-selector');
-  const mobEv  = document.getElementById('event-sel-mob');
-  if (mainEv && mobEv) {
-    mobEv.innerHTML = mainEv.innerHTML;
-    mobEv.value     = mainEv.value;
-    mainEv.addEventListener('change', () => { mobEv.value = mainEv.value; });
-  }
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); if (typeof App !== 'undefined') App.nextScramble(); }
 });
 
-// ── Keyboard shortcuts ────────────────────────────────────────────────────────
-// Retry alg trainer and time attack render until they have content
+/* Retry panels */
 function _retryPanels() {
-  // Alg Trainer
-  const tc = document.getElementById('trainer-content');
-  if (tc && tc.children.length === 0 && typeof AlgTrainer !== 'undefined') {
-    try { AlgTrainer.show(); } catch(e) { console.error('AlgTrainer retry:', e); }
-  }
-  // Time Attack
-  const ta = document.getElementById('ta-content');
-  if (ta && ta.children.length === 0 && typeof TimeAttack !== 'undefined') {
-    try { TimeAttack.show(); } catch(e) { console.error('TimeAttack retry:', e); }
-  }
+  var tc = document.getElementById('trainer-content');
+  if (tc && tc.children.length === 0 && typeof AlgTrainer !== 'undefined') { try { AlgTrainer.show(); } catch(e) {} }
+  var ta = document.getElementById('ta-content');
+  if (ta && ta.children.length === 0 && typeof TimeAttack !== 'undefined') { try { TimeAttack.show(); } catch(e) {} }
 }
-window.addEventListener('load', () => {
-  setTimeout(_retryPanels, 500);
-  setTimeout(_retryPanels, 1500);
-  setTimeout(_retryPanels, 3000);
-});
-
-// Belt-and-suspenders: fire nextScramble on DOMContentLoaded, load, AND after 500ms
-// Ensures scramble shows even if something in init chain is slow
 function _ensureScramble() {
-  const el = document.getElementById('scramble-display');
+  var el = document.getElementById('scramble-display');
   if (el && (el.textContent.trim() === 'Generating...' || el.textContent.trim() === '')) {
-    if (typeof App !== 'undefined' && typeof App.nextScramble === 'function') {
-      App.nextScramble();
-    }
+    if (typeof App !== 'undefined' && typeof App.nextScramble === 'function') App.nextScramble();
   }
 }
-document.addEventListener('DOMContentLoaded', () => setTimeout(_ensureScramble, 100));
-window.addEventListener('load', () => {
-  _ensureScramble();
-  setTimeout(_ensureScramble, 500);
-  setTimeout(_ensureScramble, 1500);
+document.addEventListener('DOMContentLoaded', function() { setTimeout(_ensureScramble, 100); });
+window.addEventListener('load', function() {
+  _ensureScramble(); setTimeout(_ensureScramble, 500); setTimeout(_ensureScramble, 1500);
+  setTimeout(_retryPanels, 500); setTimeout(_retryPanels, 1500); setTimeout(_retryPanels, 3000);
 });
 
-document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT'
-      || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-  if (e.code === 'KeyN' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); App.nextScramble(); }
-  if (e.code === 'Escape') { Settings.close(); closeDrawer(); }
-});
-
-// ── Register service worker ───────────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  // Unregister any stale service workers first, then register fresh
-  navigator.serviceWorker.getRegistrations().then(regs => {
-    regs.forEach(r => r.unregister());
-  }).finally(() => {
-    navigator.serviceWorker.register('./sw.js')
-      .catch(e => console.warn('SW:', e));
-  });
+/* SW */
+function registerSW() {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 </script>
 </body>

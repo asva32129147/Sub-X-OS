@@ -1,19 +1,17 @@
-// sw.js — Sub-X OS service worker — VERSION: v20
-const CACHE = 'subx-v20';
+// sw.js — Sub-X OS service worker — VERSION: v21
+const CACHE = 'subx-v21';
 
 const ASSETS = [
-  './', './index.html', './trainer.html', './manifest.json',
-  './base.css', './timer.css', './panels.css', './modals.css', './alg-trainer.css',
+  './', './index.html', './manifest.json',
+  './subx.css', './alg-trainer.css',
   './utils.js', './storage.js', './scramble.js', './timer.js',
   './sessions.js', './stats.js', './settings.js',
   './alg-data.js', './alg-trainer.js',
   './solve-summary.js', './smartcube.js', './gyro.js',
   './session-manager.js', './universal-import.js',
   './time-attack.js', './cloud-sync.js', './auth-ui.js',
-  './virtual-cube.js',
-  './scramble-draw.js',
-  './stackmat.js',
-  './app.js',
+  './virtual-cube.js', './scramble-draw.js',
+  './stackmat.js', './app.js',
 ];
 
 self.addEventListener('install', e => {
@@ -28,7 +26,10 @@ self.addEventListener('activate', e => {
   );
 });
 self.addEventListener('fetch', e => {
-  // Don't cache Supabase API calls
-  if (e.request.url.includes('supabase.co')) return;
+  if (e.request.url.includes('supabase.co') ||
+      e.request.url.includes('bootstrap') ||
+      e.request.url.includes('cdn.cubing') ||
+      e.request.url.includes('fonts.googleapis') ||
+      e.request.url.includes('jsdelivr')) return;
   e.respondWith(caches.match(e.request).then(c => c || fetch(e.request)));
 });
