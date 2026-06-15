@@ -1,5 +1,5 @@
-// sw.js — Sub-X OS service worker — VERSION: v21
-const CACHE = 'subx-v21';
+// sw.js — Sub-X OS service worker — VERSION: v22
+const CACHE = 'subx-v22';
 
 const ASSETS = [
   './', './index.html', './manifest.json',

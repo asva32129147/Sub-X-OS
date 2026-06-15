@@ -82,7 +82,7 @@ const App = (() => {
       VirtualCube.applyScramble(currentScramble);
     }
     // Update draw scramble (2D/3D panel)
-    _updateSmartCubeBar(s.timerInput);
+    _updateSmartCubeBar(s2.timerInput);
     if (typeof ScrambleDraw !== 'undefined') {
       ScrambleDraw.update(currentScramble, _eventToPuzzle(currentEvent));
     }

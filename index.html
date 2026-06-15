@@ -17,8 +17,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600&family=Rubik:wght@300;400;600&family=Outfit:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <!-- Sub-X overrides (timer display, solve list, accent colour only) -->
-  <link rel="stylesheet" href="subx.css?v=21">
-  <link rel="stylesheet" href="alg-trainer.css?v=21">
+  <link rel="stylesheet" href="subx.css?v=22">
+  <link rel="stylesheet" href="alg-trainer.css?v=22">
 
   <!-- cubing.js 3D renders -->
   <script src="https://cdn.cubing.net/js/cubing/twisty" type="module" defer></script>
@@ -80,7 +80,7 @@
     </header>
 
     <!-- TIMER VIEW -->
-    <div id="view-timer" class="view active d-flex flex-column flex-grow-1 overflow-hidden">
+    <div id="view-timer" class="view active">
       <!-- Scramble -->
       <div id="scramble-wrap" class="px-3 pt-2 pb-1 text-center border-bottom">
         <div id="scramble-event-label" class="text-info fw-bold" style="display:none;letter-spacing:.1em"></div>
@@ -138,14 +138,14 @@
     </div>
 
     <!-- TRAINER VIEW -->
-    <div id="view-trainer" class="view flex-grow-1 overflow-hidden" style="display:none">
+    <div id="view-trainer" class="view">
       <div id="trainer-panel" class="h-100 overflow-y-auto">
         <div id="trainer-content" class="p-3"></div>
       </div>
     </div>
 
     <!-- TIME ATTACK VIEW -->
-    <div id="view-timeattack" class="view flex-grow-1 overflow-hidden" style="display:none">
+    <div id="view-timeattack" class="view">
       <div id="time-attack-panel" class="h-100 overflow-y-auto">
         <div id="ta-content" class="p-3"></div>
       </div>
@@ -270,42 +270,43 @@
 
 <!-- ══ SCRIPTS (order is critical) ════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
-<script src="utils.js?v=21"></script>
-<script src="storage.js?v=21"></script>
-<script src="scramble.js?v=21"></script>
-<script src="timer.js?v=21"></script>
-<script src="sessions.js?v=21"></script>
-<script src="stats.js?v=21"></script>
-<script src="settings.js?v=21"></script>
-<script src="alg-data.js?v=21"></script>
-<script src="alg-trainer.js?v=21"></script>
-<script src="solve-summary.js?v=21"></script>
-<script src="smartcube.js?v=21"></script>
-<script src="gyro.js?v=21"></script>
-<script src="session-manager.js?v=21"></script>
-<script src="universal-import.js?v=21"></script>
-<script src="time-attack.js?v=21"></script>
-<script src="virtual-cube.js?v=21"></script>
-<script src="scramble-draw.js?v=21"></script>
-<script src="stackmat.js?v=21"></script>
-<script src="cloud-sync.js?v=21"></script>
-<script src="auth-ui.js?v=21"></script>
-<script src="app.js?v=21"></script>
+<script src="utils.js?v=22"></script>
+<script src="storage.js?v=22"></script>
+<script src="scramble.js?v=22"></script>
+<script src="timer.js?v=22"></script>
+<script src="sessions.js?v=22"></script>
+<script src="stats.js?v=22"></script>
+<script src="settings.js?v=22"></script>
+<script src="alg-data.js?v=22"></script>
+<script src="alg-trainer.js?v=22"></script>
+<script src="solve-summary.js?v=22"></script>
+<script src="smartcube.js?v=22"></script>
+<script src="gyro.js?v=22"></script>
+<script src="session-manager.js?v=22"></script>
+<script src="universal-import.js?v=22"></script>
+<script src="time-attack.js?v=22"></script>
+<script src="virtual-cube.js?v=22"></script>
+<script src="scramble-draw.js?v=22"></script>
+<script src="stackmat.js?v=22"></script>
+<script src="cloud-sync.js?v=22"></script>
+<script src="auth-ui.js?v=22"></script>
+<script src="app.js?v=22"></script>
 
 <script>
 /* ── showView, mobileTab, drawer, scramble key ─────────────────────────── */
 function showView(name, btn) {
   document.querySelectorAll('.view').forEach(function(v) {
-    v.style.display = 'none'; v.classList.remove('active');
+    v.classList.remove('active');
   });
   var el = document.getElementById('view-' + name);
-  if (el) { el.style.display = 'flex'; el.classList.add('active'); }
+  if (el) el.classList.add('active');
+
   document.querySelectorAll('[data-view]').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.view === name);
-    if (b.dataset.view === name) { b.classList.replace('btn-outline-secondary','btn-outline-info') || b.classList.add('btn-outline-info'); }
-    else { b.classList.replace('btn-outline-info','btn-outline-secondary'); }
+    var active = b.dataset.view === name;
+    b.classList.toggle('btn-outline-info', active);
+    b.classList.toggle('btn-outline-secondary', !active);
   });
-  if (btn) btn.classList.add('active');
+
   if (name === 'trainer')    { if (typeof AlgTrainer !== 'undefined') AlgTrainer.show(); if (typeof Timer !== 'undefined') Timer.cancelAll(); }
   else                       { if (typeof AlgTrainer !== 'undefined') AlgTrainer.hide(); }
   if (name === 'timeattack') { if (typeof TimeAttack !== 'undefined') TimeAttack.show(); if (typeof Timer !== 'undefined') Timer.cancelAll(); }

@@ -3,20 +3,109 @@
    This file handles: timer display, accent colour, custom components */
 
 /* ── Accent + font variables ─────────────────────────────────────────────── */
-:root {
+/* ── Theme system: app uses [data-theme] on <html>, separate from Bootstrap's
+   data-bs-theme (which stays "dark" always — these vars feed Bootstrap too) ── */
+:root,
+[data-theme="dark"] {
+  --bg:       #1a1a1a;
+  --bg2:      #222;
+  --bg3:      #2a2a2a;
+  --surface:  #242424;
+  --border:   #333;
+  --border2:  #3a3a3a;
+  --text:     #e8e8e8;
+  --text2:    #aaa;
+  --text3:    #666;
+
   --accent:       #00bcd4;
-  --red:          #ef5350;
+  --accent2:      #0097a7;
+  --red:          #f44336;
   --green:        #4caf50;
   --orange:       #ff9800;
+  --yellow:       #ffeb3b;
+
+  --timer-idle:    #e8e8e8;
+  --timer-holding: #f44336;
+  --timer-ready:   #4caf50;
+  --timer-running: #e8e8e8;
+  --timer-stopped: #00bcd4;
+
   --font-timer:   'Roboto Mono', monospace;
   --font-ui:      'Outfit', sans-serif;
   --font-size-timer: clamp(52px, 10vw, 120px);
 }
-[data-bs-theme="dark"] {
-  --bs-body-bg: #111;
-  --bs-border-color: #2a2a2a;
-  --bs-secondary-color: #666;
+
+[data-theme="light"] {
+  --bg:       #f5f5f5;
+  --bg2:      #ebebeb;
+  --bg3:      #e0e0e0;
+  --surface:  #fff;
+  --border:   #ddd;
+  --border2:  #ccc;
+  --text:     #1a1a1a;
+  --text2:    #555;
+  --text3:    #999;
 }
+
+[data-theme="amoled"] {
+  --bg:       #000;
+  --bg2:      #0a0a0a;
+  --bg3:      #111;
+  --surface:  #0d0d0d;
+  --border:   #222;
+  --border2:  #2a2a2a;
+  --text:     #fff;
+  --text2:    #aaa;
+  --text3:    #555;
+}
+
+[data-theme="green"] {
+  --bg:       #0a0f0a;
+  --bg2:      #0d150d;
+  --bg3:      #111a11;
+  --surface:  #0f1a0f;
+  --border:   #1a3a1a;
+  --border2:  #224422;
+  --text:     #00e676;
+  --text2:    #2e7d32;
+  --text3:    #1b5e20;
+  --accent:   #00e676;
+  --timer-idle:    #00e676;
+  --timer-running: #00e676;
+  --timer-stopped: #69f0ae;
+}
+
+/* Map app theme vars onto Bootstrap's CSS vars so Bootstrap components
+   (cards, modals, buttons, forms) follow the selected theme too */
+[data-bs-theme="dark"] {
+  --bs-body-bg:        var(--bg);
+  --bs-body-color:     var(--text);
+  --bs-border-color:   var(--border);
+  --bs-secondary-color: var(--text3);
+  --bs-tertiary-bg:    var(--bg2);
+  --bs-card-bg:        var(--surface);
+  --bs-card-border-color: var(--border);
+}
+body { background: var(--bg); color: var(--text); transition: background .15s, color .15s; }
+
+/* ── View switching ──────────────────────────────────────────────────────
+   Bootstrap's d-flex/flex-grow-1 use !important, which JS .style.display
+   manipulation cannot override. So views are toggled via .active class only,
+   and #view-* divs carry NO Bootstrap display/flex utility classes. ── */
+.view {
+  display: none;
+}
+.view.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: hidden;
+  min-height: 0;
+}
+.card, .modal-box, .set-card, .learn-card { background: var(--surface) !important; border-color: var(--border) !important; color: var(--text); }
+.form-select, .form-control { background: var(--bg3) !important; border-color: var(--border) !important; color: var(--text) !important; }
+.border, .border-top, .border-bottom, .border-start, .border-end { border-color: var(--border) !important; }
+[data-theme="light"] .text-secondary { color: var(--text3) !important; }
 body { font-family: var(--font-ui); }
 .text-accent { color: var(--accent) !important; }
 .btn-outline-info { --bs-btn-color: var(--accent); --bs-btn-border-color: var(--accent); --bs-btn-hover-bg: rgba(0,188,212,.1); }
@@ -237,3 +326,79 @@ body { font-family: var(--font-ui); }
 
 /* ── Solve panel header ──────────────────────────────────────────────────── */
 .solve-panel-header { display:flex; align-items:center; justify-content:space-between; padding:4px 8px; border-bottom:1px solid #2a2a2a; }
+
+/* ═══ Solve Summary modal — remaining classes ════════════════════════════════ */
+.ss-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 4px; }
+.ss-solve-num { font-size:11px; color:var(--text3); }
+.ss-session   { font-size:10px; color:var(--text3); }
+.ss-meta { display:flex; gap:10px; justify-content:center; font-size:10px; color:var(--text3); padding:4px 0 10px; }
+.ss-section { padding:0 14px 10px; }
+.ss-section-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--text3); margin-bottom:5px; }
+.ss-scramble { font-family:var(--font-timer); font-size:12px; color:var(--text2); line-height:1.7; word-break:break-all; background:var(--bg2); border-radius:4px; padding:8px 10px; }
+.ss-context { display:flex; flex-direction:column; gap:4px; }
+.ss-ctx-item { display:flex; justify-content:space-between; font-size:11px; }
+.ss-ctx-label { color:var(--text3); }
+.ss-ctx-val   { font-family:var(--font-timer); color:var(--text); }
+.ss-recon { font-family:var(--font-timer); font-size:11px; color:var(--text2); word-break:break-all; line-height:1.7; }
+.ss-comment-input { width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:12px; padding:6px 8px; resize:vertical; min-height:50px; }
+.ss-comment-input:focus { outline:none; border-color:var(--accent); }
+.ss-badge { display:inline-block; font-size:9px; padding:1px 6px; border-radius:8px; background:var(--bg3); color:var(--text2); }
+.ss-penalty-row { display:flex; gap:6px; }
+.ss-pen-btn { flex:1; padding:6px; font-size:10px; border-radius:4px; border:1px solid var(--border); background:var(--bg2); color:var(--text2); cursor:pointer; transition:border-color .1s; }
+.ss-pen-btn:hover { border-color:var(--accent); }
+.ss-pen-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(0,188,212,.08); }
+.ss-pen-label { font-size:9px; color:var(--text3); margin-bottom:3px; }
+.ss-penalty-badge { font-size:10px; padding:1px 6px; border-radius:8px; }
+.ss-penalty-badge.dnf  { background:rgba(244,67,54,.15); color:var(--red); }
+.ss-penalty-badge.plus { background:rgba(255,152,0,.12); color:var(--orange); }
+.ss-copy-btn { background:none; border:none; color:var(--text3); font-size:10px; cursor:pointer; padding:0 4px; }
+.ss-copy-btn:hover { color:var(--accent); }
+.ss-toast {
+  position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #000; font-size: 11px; font-weight: 700;
+  padding: 5px 14px; border-radius: 12px; opacity: 0; pointer-events: none;
+  z-index: 200; transition: opacity .2s;
+}
+.ss-toast.show { opacity: 1; }
+
+/* ═══ Session Manager modal ══════════════════════════════════════════════════ */
+.sm-box      { padding: 10px 14px; }
+.sm-toolbar  { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+.sm-btn-primary, .sm-btn-sec {
+  font-size: 11px; padding: 5px 12px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg2); color: var(--text2);
+  transition: border-color .1s, color .1s;
+}
+.sm-btn-primary { border-color: var(--accent); color: var(--accent); }
+.sm-btn-primary:hover { background: rgba(0,188,212,.08); }
+.sm-btn-sec:hover { border-color: var(--text2); color: var(--text); }
+.sm-type-legend { display:flex; gap:14px; font-size:10px; color:var(--text3); margin-bottom:8px; align-items:center; }
+.sm-type-pill { display:inline-flex; align-items:center; gap:4px; }
+.sm-type-dot  { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.sm-type-dot.practice   { background: var(--accent); }
+.sm-type-dot.collection { background: var(--orange); }
+.sm-group { margin-bottom: 10px; }
+.sm-group-header {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--text3); padding: 4px 0; border-bottom: 1px solid var(--border); margin-bottom: 4px;
+}
+.sm-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 4px; font-size: 12px;
+  transition: background .1s;
+}
+.sm-row:hover { background: var(--bg2); }
+.sm-row-left { display:flex; align-items:center; gap:8px; flex:1; min-width:0; cursor:pointer; }
+.sm-row-info { flex:1; min-width:0; }
+.sm-row-name { color: var(--text); font-weight: 600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sm-row-name.current { color: var(--accent); }
+.sm-row-meta { font-size: 10px; color: var(--text3); }
+.sm-row-actions { display:flex; gap:4px; flex-shrink:0; }
+.sm-row-btn {
+  font-size: 10px; padding: 3px 8px; border-radius: 3px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg2); color: var(--text3);
+  transition: border-color .1s, color .1s;
+}
+.sm-row-btn:hover { border-color: var(--accent); color: var(--accent); }
+.sm-row-btn.danger:hover { border-color: var(--red); color: var(--red); }
+.sm-footer { padding: 8px 14px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text3); }
