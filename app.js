@@ -147,7 +147,7 @@ const App = (() => {
 
   function _updateSmartCubeBar(inputMode) {
     var bar = document.getElementById('sc-status-bar');
-    if (bar) bar.style.display = inputMode === 'smartcube' ? 'flex' : 'none';
+    if (bar) bar.classList.toggle('open', inputMode === 'smartcube');
   }
 
   function onSettingsChange() {

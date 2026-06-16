@@ -60,7 +60,7 @@
   function _showPanel() {
     localStorage.setItem('subx_scr_draw', mode);
     var panel = document.getElementById('scramble-draw-panel');
-    if (panel) panel.style.display = mode === 'hidden' ? 'none' : 'flex';
+    if (panel) panel.classList.toggle('open', mode !== 'hidden');
   }
 
   function _applyToPlayer(alg, puzzle, view) {
@@ -78,23 +78,14 @@
 
     // Visualization mode
     if (view === '2d') {
-      player.setAttribute('visualization', 'experimental-2D-LL');
-      // For full cube 2D net, use 'experimental-2D'
-      player.setAttribute('visualization', 'experimental-2D');
-      player.style.height = '220px';
+      player.setAttribute('visualization', '2D');
     } else {
       player.removeAttribute('visualization');
       player.setAttribute('camera-latitude', '25');
-      player.style.height = '200px';
     }
 
-    // Control panel: show minimal controls
     player.setAttribute('control-panel', 'none');
     player.setAttribute('hint-facelets', 'none');
-    player.style.width = '100%';
-    player.style.maxWidth = '340px';
-    player.style.display = 'block';
-    player.style.margin = '0 auto';
   }
 
   function _updateBtns() {

@@ -7,6 +7,8 @@ const Settings = (() => {
   function init() {
     renderEventSelector();
     applyTheme(Storage.getSettings().theme);
+    const savedAccent = Storage.getSettings().accentColor;
+    if (savedAccent) applyAccent(savedAccent);
     document.getElementById('btn-settings')?.addEventListener('click', open);
     document.getElementById('settings-overlay')?.addEventListener('click', e => {
       if (e.target === document.getElementById('settings-overlay')) close();
@@ -58,6 +60,7 @@ const Settings = (() => {
   function open() {
     document.getElementById('settings-overlay')?.classList.add('open');
     renderModal();
+    _bindAccentControls();
   }
   function close() {
     document.getElementById('settings-overlay')?.classList.remove('open');
@@ -149,6 +152,14 @@ const Settings = (() => {
             <option value="amoled" ${s.theme==='amoled'?'selected':''}>AMOLED Black</option>
             <option value="green"  ${s.theme==='green' ?'selected':''}>Terminal Green</option>
           </select>
+        </div>
+        <div class="setting-row">
+          <label>Accent colour</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="color" id="s-accent" value="${s.accentColor || '#00bcd4'}"
+                   style="width:36px;height:24px;padding:1px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;cursor:pointer">
+            <button class="btn-sm" id="s-accent-reset" title="Reset to theme default">Reset</button>
+          </div>
         </div>
         <div class="setting-row">
           <label>Timer font</label>
@@ -284,6 +295,8 @@ const Settings = (() => {
 
     // Display
     const th = sel('s-theme');     if (th) { s.theme = th; applyTheme(th); }
+    const ac = (document.getElementById('s-accent')||{}).value;
+    if (ac) { s.accentColor = ac; applyAccent(ac); }
     const fn = sel('s-font');      if (fn) { s.timerFont = fn; applyFont(fn); }
     const ts = sel('s-timersize'); if (ts) { s.timerSize = ts; applyTimerSize(ts); }
     const tf = sel('s-timefmt');   if (tf) s.timeFormat = tf;
@@ -346,11 +359,41 @@ const Settings = (() => {
 
   function applyTheme(t) {
     document.documentElement.dataset.theme = t || 'dark';
-    // Update theme-color meta for mobile
     const meta = document.querySelector('meta[name="theme-color"]');
     const colors = { dark:'#1a1a1a', light:'#f5f5f5', amoled:'#000000', green:'#0a0f0a' };
     if (meta) meta.content = colors[t] || '#1a1a1a';
+    const ac = Storage.getSettings().accentColor;
+    if (ac) applyAccent(ac);
   }
 
-  return { init, open, close, saveAndClose, syncEventSelector, renderEventSelector, applyTheme, applyFont, applyScrambleAlign, applyTimerSize, applyScrambleSize };
+  // Custom accent colour — overrides the theme's --accent / --accent-rgb
+  function applyAccent(hex) {
+    if (!hex) return;
+    const rgb = _hexToRgb(hex);
+    if (!rgb) return;
+    document.documentElement.style.setProperty('--accent', hex);
+    document.documentElement.style.setProperty('--accent-rgb', rgb.join(','));
+  }
+  function resetAccent() {
+    document.documentElement.style.removeProperty('--accent');
+    document.documentElement.style.removeProperty('--accent-rgb');
+    const s = Storage.getSettings();
+    delete s.accentColor;
+    Storage.saveSettings(s);
+    const inp = document.getElementById('s-accent');
+    if (inp) inp.value = '#00bcd4';
+  }
+  function _hexToRgb(hex) {
+    const m = hex.replace('#','').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : null;
+  }
+
+  function _bindAccentControls() {
+    const inp = document.getElementById('s-accent');
+    const rst = document.getElementById('s-accent-reset');
+    if (inp) inp.addEventListener('input', () => applyAccent(inp.value)); // live preview
+    if (rst) rst.addEventListener('click', resetAccent);
+  }
+
+  return { init, open, close, saveAndClose, syncEventSelector, renderEventSelector, applyTheme, applyAccent, applyFont, applyScrambleAlign, applyTimerSize, applyScrambleSize, _bindAccentControls };
 })();
