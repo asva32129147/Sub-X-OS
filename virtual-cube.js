@@ -320,5 +320,27 @@ const VirtualCube = (() => {
     if (si) si.style.display = _isSolved() ? 'block' : 'none';
   }
 
-  return { init, show, hide, isActive, applyScramble, _executeMove };
+  // ── External state API (for smart cube / other input modes) ────────────────
+  // Reuses the exact same rotation logic above via a temporary closure swap,
+  // so the permutation engine is never duplicated — only one implementation.
+  function createSolvedState() {
+    return Array.from({length:6}, (_,f) => Array(9).fill(f));
+  }
+  function applyMoveExternal(externalState, move) {
+    const saved = state;
+    state = externalState;
+    _applyMove(move);
+    state = saved;
+    return externalState;
+  }
+  function isSolvedExternal(externalState) {
+    const saved = state;
+    state = externalState;
+    const result = _isSolved();
+    state = saved;
+    return result;
+  }
+
+  return { init, show, hide, isActive, applyScramble, _executeMove,
+    createSolvedState, applyMoveExternal, isSolvedExternal };
 })();

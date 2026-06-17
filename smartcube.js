@@ -30,6 +30,13 @@
   var moveLog   = [];
   var solveStart= 0;
 
+  // Cube state tracking — reuses VirtualCube's rotation/solved-check engine
+  // (see virtual-cube.js createSolvedState/applyMoveExternal/isSolvedExternal)
+  // so the permutation logic exists in exactly one place in the codebase.
+  // Assumes the physical cube is solved at the moment it connects — same
+  // assumption csTimer and the GAN app make.
+  var trackedState = null;
+
   // ── Public API ─────────────────────────────────────────────────────────────
   function init() {}  // onclick handlers in HTML — nothing to bind here
 
@@ -79,6 +86,7 @@
       connected  = true;
       moveLog    = [];
       solveStart = performance.now();
+      trackedState = (typeof VirtualCube !== 'undefined') ? VirtualCube.createSolvedState() : null;
       _status('Connected: ' + device.name + ' · ' + protocol, 'connected');
       _showMoveSection(true);
       _updateConnectBtn(true);
@@ -177,6 +185,17 @@
       el.scrollTop = el.scrollHeight;
     }
     _updateTPS();
+
+    // Drive the shared state-tracking engine and auto-stop the timer when
+    // the cube reaches solved state mid-solve. Timer._triggerSolved() is
+    // self-guarded (no-op unless actually running), so this is always safe
+    // to call even between solves or during scrambling.
+    if (trackedState && typeof VirtualCube !== 'undefined') {
+      VirtualCube.applyMoveExternal(trackedState, move);
+      if (VirtualCube.isSolvedExternal(trackedState) && typeof Timer !== 'undefined') {
+        Timer._triggerSolved();
+      }
+    }
   }
 
   // ── TPS display ─────────────────────────────────────────────────────────────

@@ -41,3 +41,21 @@
   .learn-grid { grid-template-columns: 1fr; }
   .tr-img-box { width: 100px !important; height: 100px !important; }
 }
+
+/* ── Editable algorithm field (Learn mode) ──────────────────────────────── */
+.alg-edit-row { display: flex; align-items: center; gap: 4px; }
+.alg-edit-input {
+  flex: 1; min-width: 0; font-family: var(--font-timer); font-size: 11px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 3px;
+  color: var(--green); padding: 3px 6px; outline: none;
+}
+.alg-edit-input:focus { border-color: var(--accent); color: var(--text); }
+.alg-reset-btn {
+  background: none; border: 1px solid var(--border); border-radius: 3px;
+  color: var(--text3); font-size: 11px; padding: 2px 6px; cursor: pointer;
+  flex-shrink: 0; transition: border-color .1s, color .1s;
+}
+.alg-reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Scramble-twisty container sizing (3D needs explicit pixel-ish bounds) ── */
+#scramble-twisty-container twisty-player { width: 100% !important; height: 100% !important; }

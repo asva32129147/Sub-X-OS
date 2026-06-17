@@ -427,5 +427,14 @@ const Timer = (() => {
   function getElapsed() { return elapsed; }
   function isRunning()  { return state === S.RUNNING; }
 
-  return { init, cancelAll, refreshCfg, getElapsed, isRunning, toggleInspection, syncInspBtn };
+  // External input modes (virtual cube, smart cube) call this when they
+  // independently detect the cube has reached a solved state. Guarded so it
+  // only acts while actually timing — a spurious "solved" check while idle,
+  // inspecting, or already stopped is a safe no-op.
+  function _triggerSolved() {
+    if (state !== S.RUNNING) return;
+    stopTimer();
+  }
+
+  return { init, cancelAll, refreshCfg, getElapsed, isRunning, toggleInspection, syncInspBtn, _triggerSolved };
 })();

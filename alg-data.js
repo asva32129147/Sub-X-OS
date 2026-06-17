@@ -127,8 +127,8 @@ const COLL_CASES = [
   {id:'H2',group:'H COLL',alg:"F R U R' U' R U R' U' F'",         hint:'Bar of same color on front side.'},
   {id:'H3',group:'H COLL',alg:"R2 D R' U2 R D' R' U2 R'",         hint:'All 4 U stickers same color.'},
   {id:'H4',group:'H COLL',alg:"r U' r' U' r U r' y' R' U R",      hint:'Checkerboard of U-layer corner stickers.'},
-  {id:'H5',group:'H COLL',alg:"R' U' R U' R' U2 R",               hint:'Anti-Sune variant. Quick!'},
-  {id:'H6',group:'H COLL',alg:"R U R' U R U2 R'",                 hint:'Sune variant.'},
+  {id:'H5',group:'H COLL',alg:"R' U' R U' R' U2 R",               hint:'⚠ Verify this algorithm — it currently duplicates Anti-Sune (S2) from a different COLL group, which cannot be correct since H and Sune COLL start from different corner permutations. Edit below with a checked source (J-Perm / SpeedCubeDB).'},
+  {id:'H6',group:'H COLL',alg:"R U R' U R U2 R'",                 hint:'⚠ Verify this algorithm — it currently duplicates Sune (S1) from a different COLL group, which cannot be correct since H and Sune COLL start from different corner permutations. Edit below with a checked source (J-Perm / SpeedCubeDB).'},
   // Sune COLL
   {id:'S1',group:'Sune COLL',alg:"R U R' U R U2 R'",              hint:'Single twisted corner facing up-right. Classic Sune corner pattern.'},
   {id:'S2',group:'Sune COLL',alg:"R' U' R U' R' U2 R",            hint:'Anti-Sune corner pattern.'},
@@ -258,4 +258,39 @@ const ALG_SETS = {
 
 function getCustomSets() { try { return JSON.parse(localStorage.getItem('subx_custom_algs')||'{}'); } catch { return {}; } }
 function saveCustomSets(s){ localStorage.setItem('subx_custom_algs', JSON.stringify(s)); }
-function getAllSets()      { return { ...ALG_SETS, ...getCustomSets() }; }
+
+// ── Per-case algorithm overrides ──────────────────────────────────────────
+// Lets the user correct any built-in algorithm (e.g. a wrong COLL alg)
+// directly in Learn mode. Keyed by "setKey::caseId" -> corrected alg string.
+// Applied on every getAllSets() call so corrections persist and survive
+// re-imports of the underlying data.
+function getAlgOverrides() { try { return JSON.parse(localStorage.getItem('subx_alg_overrides')||'{}'); } catch { return {}; } }
+function setAlgOverride(setKey, caseId, alg) {
+  const o = getAlgOverrides();
+  o[setKey + '::' + caseId] = alg;
+  localStorage.setItem('subx_alg_overrides', JSON.stringify(o));
+}
+function clearAlgOverride(setKey, caseId) {
+  const o = getAlgOverrides();
+  delete o[setKey + '::' + caseId];
+  localStorage.setItem('subx_alg_overrides', JSON.stringify(o));
+}
+
+function getAllSets() {
+  const merged   = { ...ALG_SETS, ...getCustomSets() };
+  const overrides = getAlgOverrides();
+  if (!Object.keys(overrides).length) return merged;
+  // Apply overrides without mutating the original case objects/arrays
+  const result = {};
+  for (const setKey in merged) {
+    const set = merged[setKey];
+    result[setKey] = {
+      ...set,
+      cases: (set.cases || []).map(c => {
+        const key = setKey + '::' + c.id;
+        return overrides[key] !== undefined ? { ...c, alg: overrides[key] } : c;
+      }),
+    };
+  }
+  return result;
+}

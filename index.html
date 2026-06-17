@@ -96,11 +96,12 @@
         </div>
       </div>
 
-      <!-- Draw scramble panel -->
+      <!-- Draw scramble panel — empty container: scramble-draw.js creates and
+           destroys the twisty-player element dynamically rather than mutating
+           attributes on a persistent one, since toggling between 2D (SVG) and
+           3D (WebGL) rendering modes on the same instance is unreliable. -->
       <div id="scramble-draw-panel" class="justify-content-center py-2 border-bottom">
-        <twisty-player id="scramble-twisty" puzzle="3x3x3" experimental-setup-alg=""
-          hint-facelets="none" control-panel="none" visualization="2D"
-          style="width:100%;max-width:340px;height:200px"></twisty-player>
+        <div id="scramble-twisty-container" style="width:100%;max-width:340px;height:200px;margin:0 auto"></div>
       </div>
 
       <!-- Smart cube bar -->

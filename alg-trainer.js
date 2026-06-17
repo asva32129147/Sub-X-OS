@@ -113,13 +113,17 @@
         + '<div class="card-body p-2">'
         + '<div class="d-flex gap-2 align-items-start mb-2">'
         + (customElements.get('twisty-player')
-            ? '<twisty-player puzzle="' + puzzle + '" alg="' + _esc(c.alg||'') + '" hint-facelets="none" control-panel="none" camera-latitude="90" style="width:72px;height:72px;flex-shrink:0"></twisty-player>'
+            ? '<twisty-player puzzle="' + puzzle + '" alg="' + _esc(c.alg||'') + '" hint-facelets="none" control-panel="none" camera-latitude="90" background="none" style="width:72px;height:72px;flex-shrink:0"></twisty-player>'
             : (imgUrl ? '<img src="' + imgUrl + '" style="width:72px;height:72px;object-fit:contain;flex-shrink:0" onerror="this.style.display=\'none\'">' : ''))
         + '<div><div class="fw-bold">' + _esc(c.id) + '</div>'
         + (c.group ? '<small class="text-secondary">' + _esc(c.group) + '</small><br>' : '')
         + (c.hint  ? '<small class="text-secondary">' + _esc(c.hint) + '</small>' : '')
         + '</div></div>'
-        + '<div class="alg-line"><span class="alg-badge">Alg</span> <code class="text-success">' + _esc(c.alg||'—') + '</code></div>'
+        + '<div class="alg-line alg-edit-row"><span class="alg-badge">Alg</span> '
+        + '<input type="text" class="alg-edit-input" value="' + _esc(c.alg||'') + '" '
+        + 'onchange="window.AlgTrainer.saveAlgOverride(\'' + activeKey + '\',\'' + c.id + '\',this.value)" spellcheck="false">'
+        + '<button class="alg-reset-btn" title="Reset to default" onclick="window.AlgTrainer.resetAlgOverride(\'' + activeKey + '\',\'' + c.id + '\')">↺</button>'
+        + '</div>'
         + (c.auf   ? '<div class="alg-line"><span class="alg-badge">AUF</span> <small class="text-warning">' + _esc(c.auf) + '</small></div>' : '')
         + (c.setup ? '<div class="alg-line"><span class="alg-badge">Setup</span> <small>' + _esc(c.setup) + '</small></div>' : '')
         + (c.notes ? '<div class="text-secondary mt-1" style="font-size:10px">' + _esc(c.notes) + '</div>' : '')
@@ -206,7 +210,7 @@
     var puzzle = _evToPuzzle(activeSet.event);
     var isPLL  = activeSet.name && activeSet.name.toUpperCase().indexOf('PLL') >= 0;
     if (customElements.get('twisty-player')) {
-      box.innerHTML = '<twisty-player puzzle="' + puzzle + '" alg="' + _esc(c.alg||'') + '" hint-facelets="none" control-panel="none"'
+      box.innerHTML = '<twisty-player puzzle="' + puzzle + '" alg="' + _esc(c.alg||'') + '" hint-facelets="none" control-panel="none" background="none"'
         + (isPLL ? '' : ' camera-latitude="90"') + ' style="width:150px;height:150px;display:block"></twisty-player>';
     } else {
       var url = c.imageUrl || (activeSet.imgFn ? activeSet.imgFn(c.alg) : '');
@@ -357,6 +361,21 @@
   function _saveSets(s){try{localStorage.setItem('subx_custom_algs',JSON.stringify(s));}catch(e){}}
   function _download(text, name, type) { var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:type})); a.download=name; a.click(); }
 
+  function saveAlgOverride(setKey, caseId, alg) {
+    alg = (alg || '').trim();
+    if (!alg) return;
+    setAlgOverride(setKey, caseId, alg);
+    // Reflect immediately in the in-memory case data for this view
+    if (activeSet) {
+      const c = activeSet.cases.find(c => c.id === caseId);
+      if (c) c.alg = alg;
+    }
+  }
+  function resetAlgOverride(setKey, caseId) {
+    clearAlgOverride(setKey, caseId);
+    renderLearn(); // re-render to pull the original built-in alg back
+  }
+
   window.AlgTrainer = {
     init:init, show:show, hide:hide, setMode:setMode,
     startSet:startSet, backToSets:backToSets,
@@ -364,6 +383,6 @@
     nextCase:nextCase, onAnswerKey:onAnswerKey, submitOLL:submitOLL,
     toggleSTT:toggleSTT, openImport:openImport,
     downloadTemplate:downloadTemplate, doImportCSV:doImportCSV,
-    saveUserNote:saveUserNote,
+    saveUserNote:saveUserNote, saveAlgOverride:saveAlgOverride, resetAlgOverride:resetAlgOverride,
   };
 })();
