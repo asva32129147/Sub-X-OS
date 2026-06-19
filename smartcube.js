@@ -484,9 +484,39 @@
   function _loadMAC(name){try{return JSON.parse(localStorage.getItem('subx_mac_map')||'{}')[name]||null;}catch(e){return null;}}
   function _saveMAC(name,mac){try{var m=JSON.parse(localStorage.getItem('subx_mac_map')||'{}');m[name]=mac;localStorage.setItem('subx_mac_map',JSON.stringify(m));}catch(e){}}
 
-  function startSolve() { _moveLog=[]; _solveStart=performance.now(); _vcState=null; var el=document.getElementById('smartcube-moves'); if(el) el.innerHTML=''; var t=document.getElementById('sc-tps'); if(t) t.innerHTML=''; }
+  function startSolve() { _moveLog=[]; _solveStart=performance.now(); _vcState=null; if(typeof SCRender!=='undefined') SCRender.reset(); var el=document.getElementById('smartcube-moves'); if(el) el.innerHTML=''; var t=document.getElementById('sc-tps'); if(t) t.innerHTML=''; }
   function endSolve() { return {moves:_moveLog.slice(),time:Math.round(performance.now()-_solveStart)}; }
   function isConnected() { return _connected; }
+
+  // ── Live 3D render for smart cube ─────────────────────────────────────
+  // SCRender is a thin wrapper that creates/destroys a CubeRender instance
+  // bound to the #sc-3d-box in the smart cube modal.
+  var _scRenderer = null;
+  var _scRenderOn = false;
+  window.SCRender = {
+    toggle: function() {
+      _scRenderOn = !_scRenderOn;
+      var box = document.getElementById('sc-3d-box');
+      var btn = document.getElementById('btn-sc-3d');
+      if (!box) return;
+      if (_scRenderOn) {
+        box.style.display = 'block';
+        if (!_scRenderer && typeof CubeRender !== 'undefined') {
+          _scRenderer = CubeRender.create(box, { cameraLat: 25 });
+        }
+        if (btn) { btn.textContent = 'Hide 3D'; btn.classList.add('active'); }
+      } else {
+        box.style.display = 'none';
+        if (btn) { btn.textContent = '3D View'; btn.classList.remove('active'); }
+      }
+    },
+    push: function(move) {
+      if (_scRenderOn && _scRenderer) _scRenderer.push(move);
+    },
+    reset: function() {
+      if (_scRenderer) _scRenderer.reset('');
+    },
+  };
 
   window.SmartCube = { init, connect, disconnect, startSolve, endSolve, isConnected };
 })();

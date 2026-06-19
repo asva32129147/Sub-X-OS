@@ -7,7 +7,8 @@ const ASSETS = [
   './utils.js', './storage.js', './scramble.js', './timer.js',
   './sessions.js', './stats.js', './settings.js',
   './alg-data.js', './alg-trainer.js',
-  './solve-summary.js', './smartcube.js',
+  './solve-summary.js', './cube-render.js',
+  './smartcube.js',
   './bluetooth-timer.js', './gyro.js',
   './session-manager.js', './universal-import.js',
   './time-attack.js', './cloud-sync.js', './auth-ui.js',
@@ -31,6 +32,7 @@ self.addEventListener('fetch', e => {
       e.request.url.includes('bootstrap') ||
       e.request.url.includes('cdn.cubing') ||
       e.request.url.includes('fonts.googleapis') ||
-      e.request.url.includes('jsdelivr')) return;
+      e.request.url.includes('jsdelivr') ||
+      e.request.url.includes('esm.unpkg')) return;
   e.respondWith(caches.match(e.request).then(c => c || fetch(e.request)));
 });

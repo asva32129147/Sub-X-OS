@@ -36,6 +36,7 @@ const VirtualCube = (() => {
     const wrap = document.getElementById('vc-wrap');
     if (wrap) wrap.style.display = 'block';
     _render();
+    _init3D();
   }
 
   function hide() {
@@ -53,6 +54,8 @@ const VirtualCube = (() => {
     const moves = scrambleStr.trim().split(/\s+/);
     moves.forEach(m => _applyMove(m));
     _render();
+    // Sync 3D renderer to scramble state
+    if (_vcRender3D) _vcRender3D.reset(scrambleStr);
   }
 
   // ── Key handler ───────────────────────────────────────────────────────────
@@ -90,6 +93,8 @@ const VirtualCube = (() => {
     _applyMove(move);
     _render();
     _showMoveFlash(move);
+    // Feed move into live 3D renderer if active
+    if (_vc3DMode && _vcRender3D) _vcRender3D.push(move);
     if (_isSolved()) {
       setTimeout(() => {
         if (typeof Timer !== 'undefined') {
@@ -292,6 +297,42 @@ const VirtualCube = (() => {
       if (!state[f].every(s => s === f)) return false;
     }
     return true;
+  }
+
+  // ── 3D Renderer (shared CubeRender module) ──────────────────────────────
+  var _vcRender3D = null;
+  var _vc3DMode   = false;
+
+  function _init3D() {
+    var btn = document.getElementById('btn-vc-3d');
+    if (btn) { btn.onclick = _toggle3D; btn.textContent = '3D View'; }
+  }
+  function _toggle3D() {
+    _vc3DMode = !_vc3DMode;
+    var faces = document.getElementById('vc-faces');
+    var box   = document.getElementById('vc-3d-box');
+    var btn   = document.getElementById('btn-vc-3d');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'vc-3d-box';
+      box.style.cssText = 'width:100%;height:200px;margin:8px 0';
+      var wrap = document.getElementById('vc-wrap');
+      if (wrap) wrap.appendChild(box);
+    }
+    if (_vc3DMode) {
+      if (faces) faces.style.display = 'none';
+      box.style.display = 'block';
+      if (!_vcRender3D && typeof CubeRender !== 'undefined') {
+        _vcRender3D = CubeRender.create(box, { cameraLat: 25 });
+        // Feed current scramble state into renderer
+        if (currentScramble) _vcRender3D.reset(currentScramble);
+      }
+      if (btn) btn.textContent = '2D Grid';
+    } else {
+      if (faces) faces.style.display = '';
+      box.style.display = 'none';
+      if (btn) btn.textContent = '3D View';
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
