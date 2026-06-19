@@ -1,5 +1,5 @@
-// sw.js — Sub-X OS service worker — VERSION: v26
-const CACHE = 'subx-v26';
+// sw.js — Sub-X OS service worker — VERSION: v27
+const CACHE = 'subx-v27';
 
 const ASSETS = [
   './', './index.html', './manifest.json',
@@ -7,7 +7,8 @@ const ASSETS = [
   './utils.js', './storage.js', './scramble.js', './timer.js',
   './sessions.js', './stats.js', './settings.js',
   './alg-data.js', './alg-trainer.js',
-  './solve-summary.js', './smartcube.js', './gyro.js',
+  './solve-summary.js', './smartcube.js',
+  './bluetooth-timer.js', './gyro.js',
   './session-manager.js', './universal-import.js',
   './time-attack.js', './cloud-sync.js', './auth-ui.js',
   './virtual-cube.js', './scramble-draw.js',

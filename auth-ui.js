@@ -207,7 +207,7 @@ const AuthUI = (() => {
           We sent a confirmation link to <strong>${email}</strong>.<br>
           Click it to activate your account, then come back and sign in.
           <br><br>
-          <button class="btn-sm" onclick="AuthUI.showSignIn()">Back to sign in</button>
+          <button class="xs-btn" onclick="AuthUI.showSignIn()">Back to sign in</button>
         </div>`;
     } catch (e) {
       _showError(e.message || 'Sign up failed.');

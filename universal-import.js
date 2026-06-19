@@ -58,7 +58,7 @@ const UniversalImport = (() => {
         <div class="uim-drop-sub">Accepts .txt · .json · .csv</div>
         <input type="file" id="uim-file" accept=".txt,.json,.csv"
           onchange="UniversalImport.handleFile(this.files[0])" style="display:none">
-        <label class="btn-sm" for="uim-file" style="cursor:pointer;margin-top:8px;display:inline-block">
+        <label class="xs-btn" for="uim-file" style="cursor:pointer;margin-top:8px;display:inline-block">
           Browse File
         </label>
       </div>
@@ -310,7 +310,7 @@ const UniversalImport = (() => {
         ✓ Imported from <strong>${result.source}</strong>:
         ${result.sessions} session${result.sessions !== 1 ? 's' : ''},
         ${result.solves} solve${result.solves !== 1 ? 's' : ''}
-        <button class="btn-sm" style="margin-left:10px;float:right" onclick="UniversalImport.close()">Done</button>
+        <button class="xs-btn" style="margin-left:10px;float:right" onclick="UniversalImport.close()">Done</button>
       </div>`;
   }
 

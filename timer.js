@@ -436,5 +436,27 @@ const Timer = (() => {
     stopTimer();
   }
 
-  return { init, cancelAll, refreshCfg, getElapsed, isRunning, toggleInspection, syncInspBtn, _triggerSolved };
+  // External timer device hooks (GAN Smart Timer / Stackmat)
+  // _externalStart: called when a hardware timer starts running
+  // _externalStop(ms): called when a hardware timer stops; ms is the device-
+  //   measured time in milliseconds, or null to use our own elapsed clock
+  function _externalStart() {
+    if (state === S.RUNNING) return;
+    // Reset and start immediately — inspection is skipped for hardware timers
+    state = S.RUNNING; setState('running');
+    startTime = performance.now(); elapsed = 0;
+    rafId = requestAnimationFrame(tick);
+  }
+  function _externalStop(ms) {
+    if (state !== S.RUNNING) return;
+    cancelAnimationFrame(rafId); rafId = null;
+    // Use device time if provided and sane, otherwise fall back to our clock
+    var t = (ms && ms > 0 && ms < 3600000) ? Math.floor(ms/10) : Math.floor((performance.now()-startTime)/10);
+    elapsed = t; state = S.STOPPED; setState('stopped');
+    setDisplay(t);
+    phases = [];
+    if (typeof App !== 'undefined') App.onSolveComplete(t, '', null);
+  }
+
+  return { init, cancelAll, refreshCfg, getElapsed, isRunning, toggleInspection, syncInspBtn, _triggerSolved, _externalStart, _externalStop };
 })();

@@ -9,6 +9,7 @@ const Settings = (() => {
     applyTheme(Storage.getSettings().theme);
     const savedAccent = Storage.getSettings().accentColor;
     if (savedAccent) applyAccent(savedAccent);
+    _restoreCustomColors();
     document.getElementById('btn-settings')?.addEventListener('click', open);
     document.getElementById('settings-overlay')?.addEventListener('click', e => {
       if (e.target === document.getElementById('settings-overlay')) close();
@@ -79,14 +80,29 @@ const Settings = (() => {
       <section class="settings-section">
         <h3>Timer Input</h3>
         <div class="setting-row">
-          <label>Input mode</label>
-          <select id="s-input" class="s-select" onchange="if(this.value==='smartcube'){document.getElementById('smartcube-overlay').classList.add('open');}">
-            <option value="space"      ${(s.timerInput||'space')==='space'      ?'selected':''}>Keyboard (Space / both Ctrl)</option>
-            <option value="stackmat"   ${s.timerInput==='stackmat'              ?'selected':''}>Stackmat (3.5mm audio jack)</option>
-            <option value="smartcube"  ${s.timerInput==='smartcube'             ?'selected':''}>Smart Cube (Bluetooth — GAN / Giiker)</option>
-            <option value="virtual"    ${s.timerInput==='virtual'               ?'selected':''}>Virtual Cube (keyboard moves)</option>
-            <option value="manual"     ${s.timerInput==='manual'                ?'selected':''}>Manual entry (type time)</option>
+          <label>Start / Stop method</label>
+          <select id="s-input" class="s-select" onchange="Settings._onInputModeChange(this.value)">
+            <option value="space"     ${(s.timerInput||'space')==='space'     ?'selected':''}>Keyboard (Space / both Ctrl)</option>
+            <option value="stackmat"  ${s.timerInput==='stackmat'             ?'selected':''}>Stackmat (3.5mm audio jack)</option>
+            <option value="smartcube" ${s.timerInput==='smartcube'            ?'selected':''}>Smart Cube (Bluetooth — GAN / Giiker)</option>
+            <option value="gantimer"  ${s.timerInput==='gantimer'             ?'selected':''}>GAN Smart Timer (Halo etc.)</option>
+            <option value="virtual"   ${s.timerInput==='virtual'              ?'selected':''}>Virtual Cube (keyboard moves)</option>
+            <option value="manual"    ${s.timerInput==='manual'               ?'selected':''}>Manual entry (type time)</option>
           </select>
+        </div>
+        <div class="setting-row">
+          <label style="font-size:10px;color:var(--text3);max-width:200px">
+            Mixed mode: start/stop on keyboard, solve tracked by smart cube / virtual cube simultaneously.
+            Enable by using Keyboard + turning on Smart Cube / Virtual Cube separately.
+          </label>
+        </div>
+        <div class="setting-row">
+          <label>Custom start key combo</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="s-startkey" class="s-input" style="width:100px" placeholder="e.g. Space"
+              value="${s.startKey||''}" title="Leave blank for default (Space / both Ctrl). Single key or combo like Ctrl+Shift.">
+            <button class="xs-btn" onclick="document.getElementById('s-startkey').value=''">Reset</button>
+          </div>
         </div>
         <div class="setting-row">
           <label>Hold-to-start delay</label>
@@ -96,6 +112,24 @@ const Settings = (() => {
               oninput="document.getElementById('s-holddelay-val').textContent=this.value+'ms'">
             <span id="s-holddelay-val" style="font-size:11px;color:var(--accent);min-width:44px">${s.holdDelay||550}ms</span>
           </div>
+        </div>
+      </section>
+
+      <!-- ── Virtual Cube Keybinds ──────────────────────────────────────── -->
+      <section class="settings-section">
+        <h3>Virtual Cube Keybinds</h3>
+        <p style="font-size:10px;color:var(--text3);margin:0 0 8px">
+          Used when Input Mode is "Virtual Cube". Modifier: add <kbd>'</kbd> after for inverse, <kbd>2</kbd> for double.
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          ${['U','F','R','L','D','B','X','Y','Z'].map(function(face){
+            var key = (s.vcKeys&&s.vcKeys[face])||face.toLowerCase();
+            return '<div class="setting-row" style="margin:0"><label style="font-size:11px">'+face+'</label>'
+              +'<input class="s-input vc-key-input" data-face="'+face+'" value="'+key+'" style="width:48px;text-align:center"></div>';
+          }).join('')}
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="xs-btn" onclick="Settings._resetVCKeys()">Reset all</button>
         </div>
       </section>
 
@@ -158,7 +192,43 @@ const Settings = (() => {
           <div style="display:flex;align-items:center;gap:6px">
             <input type="color" id="s-accent" value="${s.accentColor || '#00bcd4'}"
                    style="width:36px;height:24px;padding:1px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;cursor:pointer">
-            <button class="btn-sm" id="s-accent-reset" title="Reset to theme default">Reset</button>
+            <button class="xs-btn" id="s-accent-reset" title="Reset to theme default">Reset</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>Background</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="color" id="s-color-bg" value="${s.colorBg||''}" placeholder="#1a1a1a"
+                   style="width:36px;height:24px;padding:1px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;cursor:pointer"
+                   oninput="document.documentElement.style.setProperty('--bg',this.value)">
+            <button class="xs-btn" onclick="document.getElementById('s-color-bg').value='';document.documentElement.style.removeProperty('--bg')">Reset</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>Surface / cards</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="color" id="s-color-surface" value="${s.colorSurface||''}"
+                   style="width:36px;height:24px;padding:1px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;cursor:pointer"
+                   oninput="document.documentElement.style.setProperty('--surface',this.value)">
+            <button class="xs-btn" onclick="document.getElementById('s-color-surface').value='';document.documentElement.style.removeProperty('--surface')">Reset</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>Text colour</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="color" id="s-color-text" value="${s.colorText||''}"
+                   style="width:36px;height:24px;padding:1px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;cursor:pointer"
+                   oninput="document.documentElement.style.setProperty('--text',this.value)">
+            <button class="xs-btn" onclick="document.getElementById('s-color-text').value='';document.documentElement.style.removeProperty('--text')">Reset</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>Timer idle colour</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="color" id="s-color-timer" value="${s.colorTimer||''}"
+                   style="width:36px;height:24px;padding:1px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;cursor:pointer"
+                   oninput="document.documentElement.style.setProperty('--timer-idle',this.value)">
+            <button class="xs-btn" onclick="document.getElementById('s-color-timer').value='';document.documentElement.style.removeProperty('--timer-idle')">Reset</button>
           </div>
         </div>
         <div class="setting-row">
@@ -168,6 +238,17 @@ const Settings = (() => {
             <option value="rubik"       ${font==='rubik'      ?'selected':''}>Rubik (round)</option>
             <option value="outfit"      ${font==='outfit'     ?'selected':''}>Outfit (modern)</option>
             <option value="segment"     ${font==='segment'    ?'selected':''}>Share Tech Mono (retro)</option>
+            <option value="inter"       ${font==='inter'      ?'selected':''}>Inter (clean)</option>
+            <option value="mono"        ${font==='mono'       ?'selected':''}>System Monospace</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>UI font</label>
+          <select id="s-uifont" class="s-select">
+            <option value="outfit"     ${(s.uiFont||'outfit')==='outfit'    ?'selected':''}>Outfit</option>
+            <option value="inter"      ${(s.uiFont||'outfit')==='inter'     ?'selected':''}>Inter</option>
+            <option value="roboto"     ${(s.uiFont||'outfit')==='roboto'    ?'selected':''}>Roboto</option>
+            <option value="system"     ${(s.uiFont||'outfit')==='system'    ?'selected':''}>System Default</option>
           </select>
         </div>
         <div class="setting-row">
@@ -261,10 +342,10 @@ const Settings = (() => {
       <section class="settings-section">
         <h3>Data</h3>
         <div class="setting-row">
-          <button class="btn-sm" onclick="Sessions.exportCSTimer()">Export (csTimer format)</button>
+          <button class="xs-btn" onclick="Sessions.exportCSTimer()">Export (csTimer format)</button>
         </div>
         <div class="setting-row">
-          <button class="btn-sm" onclick="UniversalImport.open()">Import from any timer</button>
+          <button class="xs-btn" onclick="UniversalImport.open()">Import from any timer</button>
         </div>
       </section>
 
@@ -281,7 +362,15 @@ const Settings = (() => {
     const num = (id, def) => { const e = get(id); return e ? (parseInt(e.value)||def) : def; };
 
     // Input
-    const inp = sel('s-input');    if (inp) s.timerInput = inp;
+    const inp = sel('s-input');    if (inp) { s.timerInput = inp; }
+    const sk  = (document.getElementById('s-startkey')||{}).value||'';
+    s.startKey = sk.trim();
+    // Save vc keybinds
+    const vcInputs = document.querySelectorAll('.vc-key-input');
+    if (vcInputs.length) {
+      s.vcKeys = s.vcKeys || {};
+      vcInputs.forEach(function(el){ if(el.value.trim()) s.vcKeys[el.dataset.face]=el.value.trim().toLowerCase(); });
+    }
     s.holdDelay = num('s-holddelay', 550);
 
     // Inspection
@@ -297,6 +386,14 @@ const Settings = (() => {
     const th = sel('s-theme');     if (th) { s.theme = th; applyTheme(th); }
     const ac = (document.getElementById('s-accent')||{}).value;
     if (ac) { s.accentColor = ac; applyAccent(ac); }
+    // Custom colours
+    const _cv = function(id,prop,key){ var el=document.getElementById(id); if(el&&el.value){ s[key]=el.value; document.documentElement.style.setProperty(prop,el.value); } else { delete s[key]; } };
+    _cv('s-color-bg','--bg','colorBg');
+    _cv('s-color-surface','--surface','colorSurface');
+    _cv('s-color-text','--text','colorText');
+    _cv('s-color-timer','--timer-idle','colorTimer');
+    // UI font
+    const uf = sel('s-uifont'); if (uf) { s.uiFont = uf; applyUIFont(uf); }
     const fn = sel('s-font');      if (fn) { s.timerFont = fn; applyFont(fn); }
     const ts = sel('s-timersize'); if (ts) { s.timerSize = ts; applyTimerSize(ts); }
     const tf = sel('s-timefmt');   if (tf) s.timeFormat = tf;
@@ -395,5 +492,28 @@ const Settings = (() => {
     if (rst) rst.addEventListener('click', resetAccent);
   }
 
-  return { init, open, close, saveAndClose, syncEventSelector, renderEventSelector, applyTheme, applyAccent, applyFont, applyScrambleAlign, applyTimerSize, applyScrambleSize, _bindAccentControls };
+  function _onInputModeChange(val) {
+    if (val==='smartcube') document.getElementById('smartcube-overlay')?.classList.add('open');
+    if (val==='gantimer')  document.getElementById('smartcube-overlay')?.classList.add('open');
+  }
+  function _resetVCKeys() {
+    document.querySelectorAll('.vc-key-input').forEach(function(el){ el.value=el.dataset.face.toLowerCase(); });
+  }
+
+  function applyUIFont(f) {
+    var map = { outfit:"'Outfit',sans-serif", inter:"'Inter',sans-serif", roboto:"'Roboto',sans-serif", system:"system-ui,sans-serif" };
+    document.documentElement.style.setProperty('--font-ui', map[f]||map.outfit);
+  }
+
+  function _restoreCustomColors() {
+    var s = Storage.getSettings();
+    if (s.colorBg)      document.documentElement.style.setProperty('--bg',s.colorBg);
+    if (s.colorSurface) document.documentElement.style.setProperty('--surface',s.colorSurface);
+    if (s.colorText)    document.documentElement.style.setProperty('--text',s.colorText);
+    if (s.colorTimer)   document.documentElement.style.setProperty('--timer-idle',s.colorTimer);
+    if (s.accentColor)  applyAccent(s.accentColor);
+    if (s.uiFont)       applyUIFont(s.uiFont);
+  }
+
+  return { init, open, close, saveAndClose, syncEventSelector, renderEventSelector, applyTheme, applyAccent, applyUIFont, applyFont, applyScrambleAlign, applyTimerSize, applyScrambleSize, _bindAccentControls, _onInputModeChange, _resetVCKeys, _restoreCustomColors };
 })();

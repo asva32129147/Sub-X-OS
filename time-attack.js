@@ -92,7 +92,7 @@
     }).join('');
 
     var html = '<div class="ta-header">'
-      + '<button class="btn-sm" onclick="window.TimeAttack.exitRun()">&#8592; Sets</button>'
+      + '<button class="xs-btn" onclick="window.TimeAttack.exitRun()">&#8592; Sets</button>'
       + '<span class="ta-title">' + _esc(activeSet.name) + ' Time Attack</span>'
       + '</div>'
       + '<div class="ta-prerun-info">'
@@ -106,9 +106,9 @@
       + '<div class="ta-order-label">Run order — drag to reorder</div>'
       + '<div class="ta-order-grid" id="ta-order-grid">' + orderChips + '</div>'
       + '<div style="display:flex;gap:6px;margin-top:6px">'
-      + '<button class="btn-sm" onclick="window.TimeAttack.shuffleOrder()">Shuffle</button>'
-      + '<button class="btn-sm" onclick="window.TimeAttack.resetOrder()">Reset</button>'
-      + '<button class="btn-sm" onclick="window.TimeAttack.reverseOrder()">Reverse</button>'
+      + '<button class="xs-btn" onclick="window.TimeAttack.shuffleOrder()">Shuffle</button>'
+      + '<button class="xs-btn" onclick="window.TimeAttack.resetOrder()">Reset</button>'
+      + '<button class="xs-btn" onclick="window.TimeAttack.reverseOrder()">Reverse</button>'
       + '</div></div>'
 
       + '<div class="ta-hint">Space or tap &#9654; when done with each alg</div>'
@@ -152,7 +152,7 @@
     var html = '<div class="ta-run-top">'
       + '<span class="ta-run-pos">' + (runIdx + 1) + ' / ' + order.length + '</span>'
       + '<span class="ta-run-timer" id="ta-total-timer">0.00</span>'
-      + '<button class="btn-sm" style="color:var(--red)" onclick="window.TimeAttack.cancelRun()">Cancel</button>'
+      + '<button class="xs-btn" style="color:var(--red)" onclick="window.TimeAttack.cancelRun()">Cancel</button>'
       + '</div>'
       // Progress bar
       + '<div class="ta-prog-bar"><div class="ta-prog-fill" id="ta-prog" style="width:' + Math.round(runIdx / order.length * 100) + '%"></div></div>'
@@ -263,8 +263,8 @@
     html += '</div></div>'
       + '<div class="ta-nav-btns">'
       + '<button class="btn-primary" onclick="window.TimeAttack.startRun()">Run Again</button>'
-      + '<button class="btn-sm" onclick="window.TimeAttack.renderPreRun(document.getElementById(\'ta-content\'))">Change Order</button>'
-      + '<button class="btn-sm" onclick="window.TimeAttack.exitRun()">&#8592; Sets</button>'
+      + '<button class="xs-btn" onclick="window.TimeAttack.renderPreRun(document.getElementById(\'ta-content\'))">Change Order</button>'
+      + '<button class="xs-btn" onclick="window.TimeAttack.exitRun()">&#8592; Sets</button>'
       + '</div>';
     el.innerHTML = html;
   }

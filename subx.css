@@ -265,7 +265,14 @@ body { font-family: var(--font-ui); }
 .modal-header h2 { font-size: 14px; font-weight: 700; color: var(--accent); margin: 0; }
 .modal-header button { background: none; border: none; color: #666; font-size: 16px; cursor: pointer; line-height: 1; padding: 0; }
 .modal-header button:hover { color: #fff; }
-.btn-sm { font-size: 10px; padding: 2px 8px; }
+.xs-btn {
+  font-size: 10px; padding: 3px 9px; font-family: var(--font-ui);
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text2); cursor: pointer; line-height: 1.4;
+  transition: border-color .1s, color .1s;
+}
+.xs-btn:hover { border-color: var(--accent); color: var(--accent); }
+.xs-btn:disabled { opacity: .4; cursor: default; }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: #000; }
 .btn-primary:hover { background: #00a0b4; border-color: #00a0b4; color: #000; }
 
